@@ -1,0 +1,8 @@
+{
+  "name": "cargo-iot-teste-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cargo IoT - teste da API e coleta de dados do Data Lake Mestria (Netlify)",
+  "dependencies": { "aws4fetch": "^1.0.20" }
+}

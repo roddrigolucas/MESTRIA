@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cargo IoT · Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a14; --bg2: #0a1426; --painel: rgba(13, 25, 46, .72); --painel2: rgba(18, 34, 60, .7);
+    --borda: rgba(103, 232, 249, .14); --borda2: rgba(103, 232, 249, .38);
+    --texto: #e6f1ff; --suave: #93a7c3; --mudo: #5f7493; --grade: rgba(147, 167, 195, .12);
+    --ciano: #22d3ee; --ciano2: #67e8f9; --azul: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --ok: #34d399; --aviso: #fbbf24; --falha: #f87171;
+    --fonte-t: "Rajdhani", "Segoe UI", Arial, sans-serif; --fonte: "Inter", "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body { margin: 0; font-family: var(--fonte); font-size: 14px; color: var(--texto); background: var(--bg); min-height: 100vh; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(34, 211, 238, .12), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(57, 135, 229, .12), transparent 60%),
+      linear-gradient(rgba(103, 232, 249, .035) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgba(103, 232, 249, .035) 1px, transparent 1px) 0 0 / 40px 40px,
+      var(--bg); }
+  h1, h2, h3, .num, .tit { font-family: var(--fonte-t); letter-spacing: .02em; }
+  a { color: var(--ciano2); }
+  [hidden] { display: none !important; }
+
+  /* ---------- login ---------- */
+  #login { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: #050a14; overflow: hidden; }
+  #login video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #login::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,10,20,.05) 0%, rgba(5,10,20,.55) 100%); }
+  .caixa { position: relative; z-index: 1; width: min(380px, 100%); background: rgba(8, 18, 36, .42); backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(103, 232, 249, .35); border-radius: 18px; padding: 30px 28px 24px; box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 20px 60px rgba(0,0,0,.45), 0 0 40px rgba(34,211,238,.12); }
+  .caixa .marca { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ciano2); }
+  .caixa h1 { margin: 6px 0 2px; font-size: 32px; font-weight: 700; }
+  .caixa p.sub { margin: 0 0 22px; font-size: 13px; color: #c7d6ea; }
+  .caixa label { display: grid; gap: 6px; font-size: 12px; color: #c7d6ea; margin-bottom: 14px; }
+  .caixa input { font: inherit; font-size: 15px; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(103,232,249,.3); background: rgba(5, 12, 26, .7); color: var(--texto); }
+  .caixa input:focus { outline: 2px solid var(--ciano); outline-offset: 1px; }
+  .caixa button { width: 100%; margin-top: 6px; font: 600 15px var(--fonte); padding: 12px; border: 0; border-radius: 10px; cursor: pointer; color: #021018;
+    background: linear-gradient(90deg, var(--ciano), #38bdf8); box-shadow: 0 0 24px rgba(34,211,238,.35); }
+  .caixa button:disabled { opacity: .6; cursor: progress; }
+  .caixa .msg { min-height: 20px; margin-top: 12px; font-size: 13px; color: #fecaca; text-align: center; }
+  .caixa .rodape { margin-top: 12px; font-size: 11px; color: var(--suave); text-align: center; }
+
+  /* ---------- estrutura ---------- */
+  header.topo { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px;
+    background: rgba(5, 10, 20, .78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--borda); }
+  .logo { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .logo .marca { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--suave); }
+  .logo h1 { margin: 0; font-size: 22px; font-weight: 700; white-space: nowrap; }
+  .logo h1 span { color: var(--ciano); font-weight: 600; }
+  .pulso { width: 12px; height: 12px; border-radius: 50%; background: var(--ciano); box-shadow: 0 0 0 0 rgba(34,211,238,.6); animation: pulso 2s infinite; flex: none; }
+  @keyframes pulso { 70% { box-shadow: 0 0 0 10px rgba(34,211,238,0); } 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); } }
+  .topo-dir { display: flex; gap: 10px; align-items: center; }
+  main { max-width: 1320px; margin: 0 auto; padding: 22px 18px 60px; display: grid; gap: 18px; }
+  main > *, .grade2 > *, #resultado > * { min-width: 0; }
+  #resultado { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  .painel { background: var(--painel); border: 1px solid var(--borda); border-radius: 16px; padding: 18px 20px; position: relative;
+    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px rgba(0,0,0,.25); }
+  .painel::before { content: ""; position: absolute; left: 18px; right: 18px; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, rgba(103,232,249,.55), transparent); }
+  .cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 14px; }
+  .cab h2 { margin: 0; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .cab h2 small { font-family: var(--fonte); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--suave); margin-left: 8px; }
+  .nota { font-size: 12px; color: var(--suave); margin: 10px 0 0; line-height: 1.5; }
+  .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .grade2 { grid-template-columns: 1fr; } }
+
+  /* ---------- controles ---------- */
+  .controles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+  label { display: grid; gap: 5px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); }
+  input[type=date], input[type=text], select { font: 14px var(--fonte); padding: 9px 10px; border-radius: 10px; border: 1px solid var(--borda2); background: rgba(5,12,26,.7); color: var(--texto); }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--ciano); outline-offset: 1px; }
+  button.principal { font: 600 14px var(--fonte); padding: 11px 16px; border: 0; border-radius: 10px; cursor: pointer; color: #021018;
+    background: linear-gradient(90deg, var(--ciano), #38bdf8); box-shadow: 0 0 20px rgba(34,211,238,.28); display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+  button.principal:disabled { opacity: .65; cursor: progress; }
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(2,16,24,.3); border-top-color: #021018; border-radius: 50%; animation: gira .8s linear infinite; display: none; }
+  button:disabled .spinner { display: inline-block; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  button.sec, label.sec, a.botao { font: 600 13px var(--fonte); letter-spacing: 0; text-transform: none; color: var(--ciano2); border: 1px solid var(--borda2); border-radius: 10px; padding: 9px 13px;
+    background: rgba(34,211,238,.06); cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  button.sec:hover, label.sec:hover, a.botao:hover { background: rgba(34,211,238,.16); }
+  .lake { margin-top: 12px; font-size: 13px; color: var(--suave); }
+  .dias { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .dia { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(34,211,238,.07); color: var(--ciano2); border: 1px solid var(--borda); cursor: pointer; }
+  .dia:hover, .dia.sel { background: rgba(34,211,238,.2); border-color: var(--borda2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .c-ok { color: var(--ok); border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.08); }
+  .c-aviso { color: var(--aviso); border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.08); }
+  .c-falha { color: var(--falha); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.08); }
+  .c-off { color: var(--mudo); border-color: rgba(95,116,147,.35); background: transparent; }
+  .erro { background: rgba(248,113,113,.1); color: #fecaca; border: 1px solid rgba(248,113,113,.4); border-radius: 12px; padding: 12px 16px; }
+  .banner { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 12px 18px; border-radius: 14px; font-weight: 600; border: 1px solid; }
+  .banner.ok { color: var(--ok); border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.07); }
+  .banner.falha { color: var(--falha); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.07); }
+  .banner small { font-weight: 400; color: var(--suave); }
+
+  /* ---------- carrossel ---------- */
+  .carrossel { position: relative; overflow: hidden; --k: 3; }
+  @media (max-width: 1100px) { .carrossel { --k: 2; } }
+  @media (max-width: 680px) { .carrossel { --k: 1; } }
+  .trilho { display: flex; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+  .slide { flex: 0 0 calc(100% / var(--k)); padding: 0 7px; }
+  .slide .cartao { height: 100%; border-radius: 14px; padding: 16px 18px 14px; background: linear-gradient(160deg, rgba(34,211,238,.09), rgba(57,135,229,.04) 45%, rgba(10,20,38,.6));
+    border: 1px solid var(--borda); display: grid; grid-template-rows: auto auto auto 1fr; gap: 4px; min-height: 196px; }
+  .cartao .tit { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--ciano2); display: flex; justify-content: space-between; gap: 8px; }
+  .cartao .num { font-size: 40px; font-weight: 700; line-height: 1.05; }
+  .cartao .num small { font-size: 16px; color: var(--suave); font-weight: 600; margin-left: 4px; }
+  .cartao .sub { font-size: 12px; color: var(--suave); }
+  .cartao svg { width: 100%; height: 44px; margin: 6px 0 2px; }
+  .cartao p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: #c7d6ea; align-self: end; }
+  .carrossel .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--borda2); background: rgba(5,12,26,.85); color: var(--ciano2); font-size: 18px; cursor: pointer; z-index: 2; }
+  .carrossel .ant { left: 2px; } .carrossel .prox { right: 2px; }
+  .pontos { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+  .pontos button { width: 8px; height: 8px; border-radius: 999px; border: 0; background: var(--mudo); cursor: pointer; padding: 0; transition: width .3s; }
+  .pontos button.on { width: 22px; background: var(--ciano); }
+
+  /* ---------- cockpit ---------- */
+  .cockpit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .cockpit .instr { background: var(--painel2); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px; position: relative; min-width: 0; }
+  .cockpit .instr h3 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); display: flex; justify-content: space-between; gap: 6px; }
+  .cockpit .instr svg { width: 100%; height: auto; max-height: 200px; display: block; margin: 0 auto; }
+  .cockpit .instr #gMapa svg { max-height: 330px; }
+  .rodape-g { text-align: center; font-size: 12px; color: var(--suave); margin-top: 2px; min-height: 16px; }
+  .cockpit .larga { grid-column: span 2; }
+  @media (max-width: 980px) { .cockpit { grid-template-columns: 1fr 1fr; } .cockpit .larga { grid-column: span 2; } }
+  @media (max-width: 640px) { .cockpit { grid-template-columns: 1fr; } .cockpit .larga { grid-column: auto; } }
+  .leituras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .leit { border: 1px solid var(--borda); border-radius: 10px; padding: 7px 9px; }
+  .leit .r { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); }
+  .leit .v { font-family: var(--fonte-t); font-size: 20px; font-weight: 700; }
+  .alertas { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+  .alerta { display: flex; align-items: center; gap: 9px; font-size: 12.5px; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--borda); color: var(--mudo); transition: all .25s; }
+  .alerta i { font-style: normal; width: 20px; text-align: center; }
+  .alerta.on { color: var(--aviso); border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.08); box-shadow: 0 0 14px rgba(251,191,36,.12); }
+  .alerta.on.forte { color: var(--falha); border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.09); }
+  .replay { display: grid; grid-template-columns: auto auto 1fr auto; gap: 12px; align-items: center; margin-top: 14px; padding: 10px 14px; border: 1px solid var(--borda); border-radius: 12px; background: rgba(5,12,26,.55); }
+  .replay button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--borda2); background: rgba(34,211,238,.12); color: var(--ciano2); font-size: 15px; cursor: pointer; }
+  .replay select { padding: 6px 8px; }
+  .replay .quando { font-family: var(--fonte-t); font-size: 17px; font-weight: 600; white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--ciano); }
+  @media (max-width: 640px) { .replay { grid-template-columns: auto 1fr; } .replay .quando { grid-column: span 2; } }
+
+  /* ---------- gráficos ---------- */
+  .abas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .aba { font: 600 13px var(--fonte); color: var(--suave); background: rgba(5,12,26,.5); border: 1px solid var(--borda); padding: 8px 13px; border-radius: 999px; cursor: pointer; }
+  .aba:hover { color: var(--texto); border-color: var(--borda2); }
+  .aba[aria-selected="true"] { color: #021018; background: linear-gradient(90deg, var(--ciano), #38bdf8); border-color: transparent; box-shadow: 0 0 16px rgba(34,211,238,.3); }
+  .graficos { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 14px; }
+  .graficos.um { grid-template-columns: 1fr; }
+  @media (max-width: 560px) { .graficos { grid-template-columns: 1fr; } }
+  .graf { background: var(--painel2); border: 1px solid var(--borda); border-radius: 14px; padding: 12px 14px 8px; position: relative; min-width: 0; }
+  .graf h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .graf h3 small { font-family: var(--fonte); font-size: 12px; font-weight: 400; color: var(--suave); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--suave); margin: 4px 0 2px; min-height: 16px; }
+  .legenda i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+  .graf svg { display: block; width: 100%; height: auto; cursor: crosshair; }
+  svg text { font-family: var(--fonte); font-size: 11px; fill: var(--suave); }
+  .dica { position: absolute; pointer-events: none; background: rgba(5,12,26,.95); border: 1px solid var(--borda2); border-radius: 10px; padding: 7px 10px; font-size: 12px; white-space: nowrap; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .dica .h { color: var(--suave); margin-bottom: 3px; }
+  .dica b { font-variant-numeric: tabular-nums; }
+
+  /* ---------- autonomia ---------- */
+  .lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+  .lista li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 12px; background: rgba(5,12,26,.45); }
+  .lista .ico { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+  .lista b { display: block; margin-bottom: 2px; }
+  .lista span.d { font-size: 12.5px; color: var(--suave); line-height: 1.45; }
+  .i-ok { background: rgba(52,211,153,.14); color: var(--ok); } .i-aviso { background: rgba(251,191,36,.14); color: var(--aviso); }
+  .i-falha { background: rgba(248,113,113,.14); color: var(--falha); } .i-info { background: rgba(34,211,238,.14); color: var(--ciano2); }
+
+  /* ---------- tabelas / detalhes ---------- */
+  details.painel > summary { cursor: pointer; font-family: var(--fonte-t); font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; list-style: none; }
+  details.painel > summary::-webkit-details-marker { display: none; }
+  details.painel > summary::after { content: "＋"; float: right; color: var(--ciano2); }
+  details[open].painel > summary::after { content: "－"; }
+  details.painel[open] > summary { margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; background: rgba(5,12,26,.45); }
+  .kpi .rot { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); }
+  .kpi .val { font-family: var(--fonte-t); font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .kpi .sub { font-size: 11.5px; color: var(--suave); }
+  .tabela { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--ciano2); font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--borda2); white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--grade); vertical-align: top; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.dt { white-space: nowrap; }
+  tr.grupo td { color: var(--ciano2); font-weight: 600; background: rgba(34,211,238,.05); }
+  .barra { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--azul), var(--ciano)); min-width: 2px; }
+  .etapas { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .etapas li { display: grid; grid-template-columns: 76px 1fr; gap: 10px; font-size: 13px; align-items: start; }
+  .etapas .det { color: var(--suave); font-size: 12px; word-break: break-word; }
+  h4 { font-family: var(--fonte-t); font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); margin: 18px 0 8px; }
+  .oficial { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+  .oficial .caminho { font-family: Consolas, monospace; font-size: 12.5px; word-break: break-all; color: var(--suave); }
+  .vazio { color: var(--mudo); text-align: center; padding: 26px; }
+  @media (prefers-reduced-motion: reduce) { .trilho { transition: none; } .pulso { animation: none; } }
+</style>
+</head>
+<body>
+<div id="login">
+  <video id="videoLogin" autoplay muted loop playsinline preload="auto" poster="/media/caminhao.jpg" aria-hidden="true">
+    <source src="/media/caminhao.mp4" type="video/mp4">
+  </video>
+  <form class="caixa" id="formLogin" autocomplete="on">
+    <div class="marca">SENAI MG · Centro 4.0 · Mestria</div>
+    <h1>CARGO IoT</h1>
+    <p class="sub">Mission Control · telemetria e navegação semi-autônoma</p>
+    <label>Usuário<input id="usuario" name="username" autocomplete="username" required></label>
+    <label>Senha<input id="senha" name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit" id="entrar">Entrar</button>
+    <div class="msg" id="msgLogin" role="alert"></div>
+    <div class="rodape">Acesso restrito à equipe do projeto Frota 4.0</div>
+  </form>
+</div>
+
+<div id="app" hidden>
+<header class="topo">
+  <div class="logo"><span class="pulso"></span><div><div class="marca">SENAI MG · Centro 4.0 · Mestria</div><h1>CARGO IoT <span>// Mission Control</span></h1></div></div>
+  <div class="topo-dir"><span class="chip c-off" id="chipLake">lake</span><button class="sec" id="sair">Sair</button></div>
+</header>
+
+<main>
+  <section class="painel" id="cardParam">
+    <div class="cab"><h2>Coleta de dados <small>Data Lake Mestria · leitura somente</small></h2></div>
+    <div class="controles">
+      <label>Data inicial (UTC)<input type="date" id="ini"></label>
+      <label>Data final (UTC)<input type="date" id="fim"></label>
+      <label>Nº de série (opcional)<input type="text" id="ns" placeholder="ex.: 19965" maxlength="5" inputmode="numeric"></label>
+      <button class="principal" id="executar"><span class="spinner"></span><span id="txtBotao">Testar API e coletar</span></button>
+      <label class="sec" title="Abrir um TXT ou CSV já coletado">Abrir arquivo coletado<input type="file" id="arquivo" accept=".txt,.csv,.tsv,text/plain,text/csv" hidden></label>
+    </div>
+    <div class="lake" id="lake">Consultando dias disponíveis no lake…</div>
+    <div class="dias" id="dias"></div>
+    <p class="nota" id="abrirInfo" hidden></p>
+  </section>
+
+  <div id="erro" class="erro" hidden></div>
+
+  <div id="resultado" hidden>
+    <div id="banner" class="banner" hidden></div>
+
+    <section class="painel" id="cardInsights">
+      <div class="cab"><h2>Insights da viagem <small id="subInsights"></small></h2>
+        <label id="rotDisp" hidden style="text-transform:none;letter-spacing:0">Dispositivo <select id="selDisp"></select></label></div>
+      <div class="carrossel" id="carrossel" tabindex="0" aria-roledescription="carrossel">
+        <div class="trilho" id="trilho"></div>
+        <button class="nav ant" id="carAnt" aria-label="Anterior">‹</button>
+        <button class="nav prox" id="carProx" aria-label="Próximo">›</button>
+      </div>
+      <div class="pontos" id="pontos"></div>
+    </section>
+
+    <section class="painel" id="cardCockpit">
+      <div class="cab"><h2>Cockpit de navegação <small>replay da viagem · clique em um gráfico para ir ao momento</small></h2></div>
+      <div class="cockpit">
+        <div class="instr"><h3>Velocidade <span id="fonteVel"></span></h3><div id="gVel"></div><div class="rodape-g" id="rVel"></div></div>
+        <div class="instr"><h3>Estabilidade <span id="txtEstab"></span></h3><div id="gEstab"></div><div class="rodape-g" id="rEstab"></div></div>
+        <div class="instr"><h3>Distribuição de carga <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--mudo)">posição presumida</span></h3><div id="gCarga"></div><div class="rodape-g" id="rCarga"></div></div>
+        <div class="instr larga"><h3>Trajeto e pontos de atenção <span id="txtMapa"></span></h3><div id="gMapa"></div></div>
+        <div class="instr"><h3>Alertas do momento</h3><div class="alertas" id="gAlertas"></div><div class="leituras" id="gLeit"></div></div>
+      </div>
+      <div class="replay">
+        <button id="play" aria-label="Reproduzir">▶</button>
+        <select id="velPlay" aria-label="Velocidade do replay"><option value="1">1×</option><option value="3" selected>3×</option><option value="8">8×</option></select>
+        <input type="range" id="momento" min="0" max="0" value="0" aria-label="Momento da viagem">
+        <span class="quando" id="momentoTxt">–</span>
+      </div>
+    </section>
+
+    <section class="painel" id="cardGraf">
+      <div class="cab"><h2>Telemetria <small id="notaGraf"></small></h2></div>
+      <div class="abas" id="abas" role="tablist"></div>
+      <div class="graficos" id="graficos"></div>
+    </section>
+
+    <section class="painel" id="cardAuto">
+      <div class="cab"><h2>Navegação semi-autônoma <small>indicadores calculados dos dados · regras heurísticas, ainda não validadas em campo</small></h2></div>
+      <div class="grade2">
+        <div><h4 style="margin-top:0">Parâmetros sugeridos</h4><ul class="lista" id="recs"></ul></div>
+        <div><h4 style="margin-top:0">Prontidão dos dados</h4><ul class="lista" id="prontidao"></ul></div>
+      </div>
+    </section>
+
+    <section class="painel oficial" id="oficial" hidden></section>
+
+    <details class="painel" id="detQualidade">
+      <summary>Conexão e qualidade dos dados</summary>
+      <div class="kpis" id="kpis"></div>
+      <div id="qualidade" hidden><h4>Pontos de atenção</h4><ul class="etapas" id="listaQualidade"></ul></div>
+      <div id="cardEtapas" hidden><h4>Etapas do teste</h4><ul class="etapas" id="etapas"></ul></div>
+      <div class="grade2">
+        <div><h4>Dispositivos</h4><div class="tabela"><table><thead><tr><th>Nº série</th><th>Registros</th><th>Instantes</th><th>Máx./s</th><th>Início</th><th>Fim</th><th>Intervalo</th><th>Latência</th></tr></thead><tbody id="tDisp"></tbody></table></div></div>
+        <div><h4>Registros por dia</h4><div class="tabela"><table><thead><tr><th>Dia</th><th>Registros</th><th>Janela (UTC)</th><th style="width:35%"></th></tr></thead><tbody id="tDias"></tbody></table></div></div>
+      </div>
+      <h4>Sensores no período</h4>
+      <div class="tabela"><table><thead><tr><th>Sensor / coluna</th><th>Unidade</th><th>Faixa</th><th>Mín.</th><th>Média</th><th>Máx.</th><th>% zeros</th><th>% no limite</th><th>Nulos</th><th>Situação</th></tr></thead><tbody id="tSens"></tbody></table></div>
+    </details>
+  </div>
+
+  <section class="painel" id="cardHist">
+    <div class="cab"><h2>Histórico <small>testes feitos neste navegador</small></h2><button class="sec" id="limparHist">Limpar</button></div>
+    <div class="tabela"><table><thead><tr><th>Executado em (UTC)</th><th>Período</th><th>Nº série</th><th>Registros</th><th>Resultado</th><th>OK</th><th>Avisos</th><th>Falhas</th></tr></thead><tbody id="tTestes"></tbody></table></div>
+    <p class="nota">Os arquivos não ficam na nuvem: baixe o TXT/CSV após cada coleta.</p>
+  </section>
+</main>
+</div>
+
+<script src="/vendor/hyparquet.js"></script>
+<script>
+// ============================================================================
+// Utilitários
+// ============================================================================
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fmt = (v, casas = 2) => v === null || v === undefined || Number.isNaN(v) ? "–" : Number(v).toLocaleString("pt-BR", {maximumFractionDigits: casas});
+const dur = s => {
+  if (s === null || s === undefined) return "–";
+  if (s < 120) return fmt(s, 1) + " s";
+  if (s < 7200) return fmt(s / 60, 0) + " min";
+  return fmt(s / 3600, 1) + " h";
+};
+const hora = ts => ts ? ts.replace("T", " ").slice(0, 19) : "–";
+const iso = t => new Date(t).toISOString().replace("T", " ").slice(0, 19);
+const ms = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13), +s.slice(14, 16), +s.slice(17, 19));
+const arred = (v, c = 3) => v === null || !isFinite(v) ? null : +v.toFixed(c);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const mediana = arr => { if (!arr.length) return null; const s = Float64Array.from(arr).sort(); return s[s.length >> 1]; };
+const pct = (arr, p) => { const a = arr.filter(x => x !== null && isFinite(x)); if (!a.length) return null; const s = Float64Array.from(a).sort(); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+const media = arr => { const a = arr.filter(x => x !== null && isFinite(x)); return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null; };
+const round5 = x => Math.round(x / 5) * 5;
+const hav = (la1, lo1, la2, lo2) => {
+  const r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(a));
+};
+const orvalho = (T, UR) => { if (T == null || UR == null || UR <= 0) return null; const g = Math.log(UR / 100) + 17.62 * T / (243.12 + T); return 243.12 * g / (17.62 - g); };
+const badge = st => `<span class="chip ${st === "OK" ? "c-ok" : st === "AVISO" ? "c-aviso" : "c-falha"}">${st}</span>`;
+const hhmm = t => iso(t).slice(11, 16);
+const ddhhmm = t => { const s = iso(t); return `${s.slice(8, 10)}/${s.slice(5, 7)} ${s.slice(11, 16)}`; };
+
+let CRED = {u: "", s: ""};
+const ARQ = {};       // nome do arquivo -> URL (Blob) para download
+const ESPERADO_S = 60;
+
+async function api(caminho, binario) {
+  const r = await fetch(caminho, {headers: {"x-usuario": CRED.u, "x-senha": CRED.s}});
+  if (r.status === 401) { sair("Sessão expirada ou credenciais alteradas. Entre novamente."); throw new Error("acesso negado"); }
+  if (!r.ok) {
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    throw new Error(j.erro || "HTTP " + r.status);
+  }
+  return binario ? r.arrayBuffer() : r.json();
+}
+
+// ============================================================================
+// Lake e coleta
+// ============================================================================
+async function carregarParticoes() {
+  $("lake").textContent = "Consultando dias disponíveis no lake…"; $("dias").innerHTML = "";
+  try {
+    const j = await api("/api/particoes");
+    const dias = j.dias || [];
+    if (!dias.length) { $("lake").textContent = "Nenhum dia disponível no lake."; return; }
+    const ultimo = dias[dias.length - 1];
+    $("ini").value = $("fim").value = ultimo;
+    $("ini").min = $("fim").min = dias[0];
+    $("ini").max = $("fim").max = ultimo;
+    const atrasado = ultimo < j.esperado_ate;
+    $("chipLake").className = "chip " + (atrasado ? "c-aviso" : "c-ok");
+    $("chipLake").textContent = atrasado ? `lake até ${ultimo.split("-").reverse().join("/")}` : "lake atualizado";
+    $("lake").innerHTML = `<b>${dias.length}</b> dias disponíveis (${dias[0]} a ${ultimo}) ` +
+      (atrasado ? `<span class="chip c-aviso">pela regra dos 2 dias deveria haver dados até ${j.esperado_ate}</span>`
+                : `<span class="chip c-ok">atualizado (esperado até ${j.esperado_ate})</span>`) +
+      ` · clique em um dia para selecioná-lo.`;
+    $("dias").innerHTML = dias.map(d => `<span class="dia" data-d="${d}">${d.split("-").reverse().join("/")}</span>`).join("");
+    $("dias").onclick = e => {
+      const d = e.target.dataset.d; if (!d) return;
+      $("ini").value = $("fim").value = d;
+      for (const x of $("dias").children) x.classList.toggle("sel", x === e.target);
+    };
+  } catch (e) {
+    $("chipLake").className = "chip c-falha"; $("chipLake").textContent = "lake indisponível";
+    $("lake").innerHTML = `<span class="chip c-falha">não foi possível listar o lake</span> ${esc(e.message)}`;
+  }
+}
+
+// Valor de uma célula no TXT/CSV, no mesmo formato da interface local
+function celula(v, tipo) {
+  if (v === null || v === undefined) return "";
+  if (v instanceof Date) return v.toISOString().slice(0, 19) + "+0000";
+  if (typeof v === "bigint") return v.toString();
+  if (typeof v === "number" && (tipo === "FLOAT" || tipo === "DOUBLE")) {
+    if (!isFinite(v)) return "";
+    if (tipo === "FLOAT") for (let p = 1; p <= 9; p++) { const c = +v.toPrecision(p); if (Math.fround(c) === v) { v = c; break; } }
+    return Number.isInteger(v) ? v.toFixed(1) : String(v);
+  }
+  return String(v);
+}
+
+async function coletar(arquivos, ns, etapas) {
+  const reg = (etapa, ok, detalhe) => etapas.push({etapa, status: ok === true ? "OK" : ok === false ? "FALHA" : "AVISO", detalhe});
+  const t0 = performance.now();
+  let cols = null, tipos = {}, linhas = [], total = 0;
+  for (let k = 0; k < arquivos.length; k++) {
+    const a = arquivos[k];
+    $("txtBotao").textContent = `Lendo arquivo ${k + 1} de ${arquivos.length}…`;
+    const buf = await api("/api/objeto?key=" + encodeURIComponent(a.key), true);
+    const md = HP.parquetMetadata(buf);
+    if (!cols) {
+      cols = md.schema.slice(1).filter(x => x.type).map(x => x.name);
+      for (const x of md.schema) if (x.type) tipos[x.name] = x.type;
+    }
+    const rows = await HP.parquetReadObjects({file: buf, metadata: md, compressors: HP.compressors});
+    total += rows.length;
+    const [y, m, d] = a.dia.split("-");
+    for (const r of rows) {
+      if (ns && String(r.num_serie) !== ns) continue;
+      const t = r.time instanceof Date ? r.time.getTime() : 0;
+      linhas.push([String(r.num_serie), t, cols.map(c => celula(r[c], tipos[c])).concat([d, m, y])]);
+    }
+  }
+  reg("Leitura dos Parquet no navegador", total > 0, `${fmt(total, 0)} linhas em ${arquivos.length} arquivos | ${cols.length} colunas | ${fmt((performance.now() - t0) / 1000, 1)} s`);
+  const falt = COLS.map(c => c.c).concat(["time", "num_serie", "received_at"]).filter(c => !cols.includes(c));
+  reg("Schema x dicionário de dados", !falt.length, falt.length ? "faltando: " + falt.join(", ") : "todas as colunas presentes");
+  if (!linhas.length) { reg("Coleta", null, "sem registros no filtro"); return null; }
+  linhas.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]);
+  return {cab: cols.concat(["day", "month", "year"]), linhas: linhas.map(l => l[2])};
+}
+
+async function executar() {
+  const ns = $("ns").value.trim();
+  if (ns && !/^\d{5}$/.test(ns)) { mostrarErro("O nº de série deve ter 5 dígitos."); return; }
+  $("executar").disabled = true; $("txtBotao").textContent = "Executando teste…";
+  $("erro").hidden = true;
+  const t0 = performance.now(), agora = new Date();
+  try {
+    const j = await api(`/api/teste?ini=${$("ini").value}&fim=${$("fim").value}`);
+    const p = j.parametros; p.num_serie = ns || null;
+    let res = null, arquivo = null;
+    if (j.arquivos.length) {
+      const tab = await coletar(j.arquivos, ns, j.etapas);
+      if (tab) {
+        $("txtBotao").textContent = "Analisando…";
+        const carimbo = agora.toISOString().replace(/[-:]/g, "").slice(0, 15).replace("T", "_");
+        const base = `dados_iotcargo_${p.data_inicio}_a_${p.data_fim}${ns ? "_" + ns : ""}_${carimbo}UTC`;
+        const corpo = sep => tab.cab.join(sep) + "\n" + tab.linhas.map(l => l.join(sep)).join("\n") + "\n";
+        const tsv = corpo("\t");
+        res = await processar(new Blob([tsv]).stream());
+        const d = res.dados;
+        const txt = `# Dados oficiais - Data Lake IoT Cargo (Mestria)\n# Fonte: s3://iot-cargo-lake/telemetry/  endpoint=s3.mestria.com.br\n` +
+          `# Período (UTC): ${p.data_inicio} a ${p.data_fim} | num_serie: ${ns || "todos"}\n` +
+          `# Registros: ${d.registros} | Dispositivos: ${d.dispositivos_qtd} | Primeiro: ${d.inicio}+00 | Último: ${d.fim}+00\n` +
+          `# Gerado em: ${iso(agora.getTime())} UTC\n# Formato: valores separados por TAB; timestamps em UTC (ISO 8601)\n` + tsv;
+        for (const u of Object.values(ARQ)) URL.revokeObjectURL(u);
+        const bt = new Blob([txt], {type: "text/plain"});
+        ARQ[base + ".txt"] = URL.createObjectURL(bt);
+        ARQ[base + ".csv"] = URL.createObjectURL(new Blob([corpo(",")], {type: "text/csv"}));
+        arquivo = {nome: base + ".txt", bytes: bt.size};
+        const d0 = d.dispositivos[0];
+        j.etapas.push({etapa: "Latência received_at - time", status: "OK", detalhe: `média=${d.latencia_media_s}s | máx=${d.latencia_max_s}s`});
+        if (d0 && d0.intervalo_s !== ESPERADO_S)
+          j.etapas.push({etapa: "Intervalo mediano entre pacotes", status: "AVISO", detalhe: `${d0.intervalo_s}s entre instantes distintos (esperado ~${ESPERADO_S}s) | até ${d0.max_por_segundo} amostras no mesmo segundo`});
+      }
+    }
+    const cont = st => j.etapas.filter(e => e.status === st).length;
+    const ok = cont("FALHA") === 0, em = iso(agora.getTime()) + " UTC";
+    const nomeLog = `resultado_teste_${iso(agora.getTime()).replace(" ", "_").replace(/:/g, "")}UTC.txt`;
+    const log = `Teste de comunicação IoT Cargo (Netlify) | ${em}\nPeríodo ${p.data_inicio} a ${p.data_fim} | num_serie: ${ns || "todos"}\n\n` +
+      j.etapas.map(e => `[${e.status.padStart(5)}] ${e.etapa}${e.detalhe ? " -> " + e.detalhe : ""}`).join("\n") +
+      `\n\nTotal: ${j.etapas.length} | OK: ${cont("OK")} | Avisos: ${cont("AVISO")} | Falhas: ${cont("FALHA")}\n\nRESULTADO: ${ok ? "COMUNICAÇÃO OK" : "COMUNICAÇÃO COM PROBLEMAS"}\n`;
+    ARQ[nomeLog] = URL.createObjectURL(new Blob([log], {type: "text/plain"}));
+    renderizarTeste({ok, etapas: j.etapas, parametros: p, dados: res && res.dados, arquivo_dados: arquivo,
+      arquivo_log: {nome: nomeLog}, duracao_s: (performance.now() - t0) / 1000, executado_em: em});
+    if (res) mostrarAnalises(res.analises, `${p.data_inicio === p.data_fim ? p.data_inicio : p.data_inicio + " a " + p.data_fim}`);
+    else ocultarAnalises();
+    salvarHistorico({em: em.replace(" UTC", ""), ini: p.data_inicio, fim: p.data_fim, ns: ns || "todos",
+      registros: res ? res.dados.registros : 0, ok, n_ok: cont("OK"), avisos: cont("AVISO"), falhas: cont("FALHA")});
+  } catch (e) {
+    mostrarErro("Falha ao executar o teste: " + e.message);
+  } finally {
+    $("executar").disabled = false; $("txtBotao").textContent = "Testar API e coletar";
+  }
+}
+
+function mostrarErro(msg) { $("erro").textContent = msg; $("erro").hidden = false; }
+
+const linksArquivo = nome => {
+  const csv = nome.replace(/\.txt$/, ".csv");
+  return `<a class="botao" download="${esc(nome)}" href="${ARQ[nome]}">Baixar TXT</a>
+    <a class="botao" download="${esc(csv)}" href="${ARQ[csv]}">Baixar CSV</a>`;
+};
+
+function renderizarTeste(j) {
+  $("resultado").hidden = false;
+  const falhas = j.etapas.filter(e => e.status === "FALHA").length;
+  const avisos = j.etapas.filter(e => e.status === "AVISO").length;
+  const p = j.parametros;
+  $("banner").hidden = false;
+  $("banner").className = "banner " + (j.ok ? "ok" : "falha");
+  $("banner").innerHTML = `${j.ok ? "✓ Comunicação com a API OK" : "✕ Comunicação com problemas"}
+    <small>${j.etapas.length - falhas - avisos} OK · ${avisos} avisos · ${falhas} falhas</small>
+    <small>Período ${esc(p.data_inicio)} a ${esc(p.data_fim)} · nº série ${esc(p.num_serie || "todos")}</small>
+    <small>${esc(j.executado_em)} · ${fmt(j.duracao_s, 1)} s</small>`;
+
+  const extras = [];
+  for (const e of j.etapas) if (e.status === "AVISO" && !/^(Conexão direta|Faixas do dicionário)/.test(e.etapa)) extras.push(["AVISO", e.etapa, e.detalhe]);
+  renderizarDados(j.dados, extras, `${(p.dias_lidos || []).length} dia(s) lido(s)`);
+
+  const a = j.arquivo_dados, l = j.arquivo_log;
+  $("oficial").hidden = false;
+  $("oficial").innerHTML = `<div>
+      <div style="font-weight:600;color:var(--ciano2)">${a ? "Coleta pronta · baixe o arquivo para guardar" : "Nenhum arquivo de dados gerado"}</div>
+      <div class="caminho">${a ? `${esc(a.nome)} · ${fmt(a.bytes / 1024, 1)} KB` : "Sem registros no período/filtro escolhido."}</div>
+      <div class="caminho">Log do teste: ${esc(l.nome)}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${a ? linksArquivo(a.nome) : ""}
+      <a class="botao" download="${esc(l.nome)}" href="${ARQ[l.nome]}">Baixar log</a>
+    </div>`;
+
+  $("cardEtapas").hidden = false;
+  $("etapas").innerHTML = j.etapas.map(e => `<li>${badge(e.status)}<div><div>${esc(e.etapa)}</div><div class="det">${esc(e.detalhe)}</div></div></li>`).join("");
+  $("resultado").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+// Indicadores e tabelas de qualidade (teste ao vivo e arquivo aberto)
+function renderizarDados(d, extras = [], subRegistros = "") {
+  $("resultado").hidden = false;
+  const pontos = [...extras];
+  if (d) {
+    const porSit = {};
+    for (const s of d.sensores) if (s.situacao !== "ok") (porSit[s.situacao] ||= []).push(s.coluna);
+    for (const [sit, cols] of Object.entries(porSit))
+      pontos.push([sit.startsWith("fora") || sit.startsWith("saturado") ? "FALHA" : "AVISO", "Sensores: " + sit, cols.join(", ")]);
+  }
+  $("qualidade").hidden = !pontos.length;
+  $("listaQualidade").innerHTML = pontos.map(([st, t, det]) =>
+    `<li>${st === "FALHA" ? `<span class="chip c-falha">ALERTA</span>` : badge(st)}<div><div>${esc(t)}</div><div class="det">${esc(det)}</div></div></li>`).join("");
+  $("kpis").innerHTML = d ? [
+    ["Registros", fmt(d.registros, 0), subRegistros],
+    ["Dispositivos", fmt(d.dispositivos_qtd, 0), d.dispositivos.map(x => x.num_serie).join(", ")],
+    ["Primeiro registro", hora(d.inicio).slice(0, 10), hora(d.inicio).slice(11) + " UTC"],
+    ["Último registro", hora(d.fim).slice(0, 10), hora(d.fim).slice(11) + " UTC"],
+    ["Intervalo mediano", dur(d.dispositivos[0]?.intervalo_s), "entre pacotes"],
+    ["Latência média", dur(d.latencia_media_s), "máx. " + dur(d.latencia_max_s)],
+  ].map(([r, v, s]) => `<div class="kpi"><div class="rot">${r}</div><div class="val">${esc(v)}</div><div class="sub">${esc(s)}</div></div>`).join("") : "";
+
+  $("tDisp").innerHTML = d && d.dispositivos.length ? d.dispositivos.map(x => `<tr>
+      <td><b>${esc(x.num_serie)}</b></td><td class="n">${fmt(x.registros, 0)}</td>
+      <td class="n">${fmt(x.instantes, 0)}</td><td class="n">${fmt(x.max_por_segundo, 0)}</td>
+      <td class="dt">${esc(hora(x.inicio))}</td><td class="dt">${esc(hora(x.fim))}</td>
+      <td class="n">${dur(x.intervalo_s)}</td><td class="n">${dur(x.latencia_media_s)}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="vazio">Sem dados</td></tr>`;
+
+  const maxDia = d ? Math.max(1, ...d.por_dia.map(x => x.registros)) : 1;
+  $("tDias").innerHTML = d && d.por_dia.length ? d.por_dia.map(x => `<tr>
+      <td>${esc(x.dia.split("-").reverse().join("/"))}</td><td class="n">${fmt(x.registros, 0)}</td>
+      <td>${esc(x.inicio)} – ${esc(x.fim)}</td>
+      <td><div class="barra" style="width:${100 * x.registros / maxDia}%"></div></td></tr>`).join("")
+    : `<tr><td colspan="4" class="vazio">Sem dados</td></tr>`;
+
+  let grupoAtual = "", linhas = "";
+  for (const s of (d ? d.sensores : [])) {
+    if (s.grupo !== grupoAtual) { grupoAtual = s.grupo; linhas += `<tr class="grupo"><td colspan="10">${esc(s.grupo)}</td></tr>`; }
+    const cls = s.situacao === "ok" ? "c-ok" : (s.situacao.startsWith("fora") || s.situacao.startsWith("saturado")) ? "c-falha" : "c-aviso";
+    linhas += `<tr><td>${esc(s.coluna)}</td><td>${esc(s.unidade)}</td><td>${esc(s.faixa)}</td>
+      <td class="n">${fmt(s.min, 3)}</td><td class="n">${fmt(s.media, 3)}</td><td class="n">${fmt(s.max, 3)}</td>
+      <td class="n">${fmt(s.pct_zeros, 1)}%</td><td class="n">${s.pct_no_limite === null ? "–" : fmt(s.pct_no_limite, 1) + "%"}</td><td class="n">${fmt(s.nulos, 0)}</td>
+      <td><span class="chip ${cls}">${esc(s.situacao)}</span></td></tr>`;
+  }
+  $("tSens").innerHTML = linhas || `<tr><td colspan="10" class="vazio">Sem dados</td></tr>`;
+}
+
+// ============================================================================
+// Leitura em fluxo de um TXT/CSV coletado + estatísticas por sensor
+// ============================================================================
+const GRUPOS = [
+  ["Inclinômetro", "grau", ["angle_side", "angle_front"], [-90, 90]],
+  ...[1, 2, 3, 4].map(i => [`Acelerômetro ${i}`, "G", [`ac${i}_x`, `ac${i}_y`, `ac${i}_z`], [-8, 8]]),
+  ["Ambiente", "%", ["humidity"], [0, 100]],
+  ["Ambiente", "°C", ["temperature"], [-40, 80]],
+  ["Células de carga", "000.0", [1, 2, 3, 4].map(i => `load_cell_${i}`), [0, 999.9]],
+  ["Fim de curso", "0/1", ["end_course_1", "end_course_2"], [0, 1]],
+  ["Hodômetro", "cm", ["odometer"], [0, 999999999]],
+  ["Horímetro", "s", ["hour_meter"], [0, 999999999]],
+  ["GPS", "grau", ["latitude"], [-90, 90]],
+  ["GPS", "grau", ["longitude"], [-180, 180]],
+];
+const COLS = GRUPOS.flatMap(([g, u, cs, fx]) => cs.map(c => ({c, g, u, lo: fx[0], hi: fx[1]})));
+const NC = COLS.length;
+const IX = Object.fromEntries(COLS.map((c, i) => [c.c, i]));
+
+async function processar(stream) {
+  const leitor = stream.pipeThrough(new TextDecoderStream()).getReader();
+  let resto = "", sep = "\t", pos = null, iT = -1, iNs = -1, iRx = -1;
+  const g = {n: 0, mn: new Float64Array(NC).fill(Infinity), mx: new Float64Array(NC).fill(-Infinity),
+             soma: new Float64Array(NC), val: new Float64Array(NC), zeros: new Float64Array(NC),
+             fora: new Float64Array(NC), lim: new Float64Array(NC), latSoma: 0, latN: 0, latMax: -Infinity};
+  const disp = new Map(), dias = new Map(), amostras = new Map();   // amostras: nº série -> colunas por amostra
+
+  function linha(l) {
+    if (l.endsWith("\r")) l = l.slice(0, -1);
+    if (!l || l[0] === "#") return;
+    if (!pos) {
+      sep = l.includes("\t") ? "\t" : ",";
+      const cab = l.split(sep);
+      iT = cab.indexOf("time"); iNs = cab.indexOf("num_serie"); iRx = cab.indexOf("received_at");
+      if (iT < 0 || iNs < 0) throw new Error("o arquivo não tem as colunas time e num_serie (não parece uma coleta do IoT Cargo)");
+      pos = COLS.map(x => cab.indexOf(x.c));
+      return;
+    }
+    const f = l.split(sep), t = ms(f[iT]);
+    if (isNaN(t)) return;
+    const ns = f[iNs];
+    g.n++;
+    let d = disp.get(ns);
+    if (!d) disp.set(ns, d = {n: 0, ini: t, fim: t, inst: 0, ult: null, rep: 0, maxRep: 0, dts: new Map(), latSoma: 0, latN: 0});
+    d.n++; if (t < d.ini) d.ini = t; if (t > d.fim) d.fim = t;
+    if (t !== d.ult) {
+      if (d.ult !== null) { const dt = (t - d.ult) / 1000; d.dts.set(dt, (d.dts.get(dt) || 0) + 1); }
+      d.ult = t; d.inst++; d.rep = 1;
+    } else d.rep++;
+    if (d.rep > d.maxRep) d.maxRep = d.rep;
+    if (iRx >= 0 && f[iRx]) {
+      const lat = (ms(f[iRx]) - t) / 1000;
+      if (!isNaN(lat)) { g.latSoma += lat; g.latN++; if (lat > g.latMax) g.latMax = lat; d.latSoma += lat; d.latN++; }
+    }
+    const dia = f[iT].slice(0, 10);
+    let pd = dias.get(dia);
+    if (!pd) dias.set(dia, pd = {n: 0, ini: t, fim: t});
+    pd.n++; if (t < pd.ini) pd.ini = t; if (t > pd.fim) pd.fim = t;
+
+    let am = amostras.get(ns);
+    if (!am) amostras.set(ns, am = {t: [], v: COLS.map(() => [])});
+    am.t.push(t);
+    for (let i = 0; i < NC; i++) {
+      const p = pos[i], bruto = p < 0 ? "" : f[p];
+      const v = bruto === "" || bruto === undefined ? NaN : +bruto;
+      am.v[i].push(v);
+      if (isNaN(v)) continue;
+      const c = COLS[i];
+      g.val[i]++; g.soma[i] += v; if (v < g.mn[i]) g.mn[i] = v; if (v > g.mx[i]) g.mx[i] = v;
+      if (v === 0) g.zeros[i]++;
+      if (v < c.lo || v > c.hi) g.fora[i]++;
+      if (v === c.lo || v === c.hi) g.lim[i]++;
+    }
+  }
+
+  for (;;) {
+    const {value, done} = await leitor.read();
+    if (done) break;
+    resto += value;
+    const ls = resto.split("\n"); resto = ls.pop();
+    for (const l of ls) linha(l);
+  }
+  if (resto) linha(resto);
+  if (!g.n) throw new Error("nenhum registro encontrado no arquivo");
+
+  const medianaDt = dts => {
+    const o = [...dts.entries()].sort((a, b) => a[0] - b[0]); const tot = o.reduce((s, x) => s + x[1], 0);
+    let ac = 0; for (const [dt, q] of o) { ac += q; if (ac >= tot / 2) return dt; } return null;
+  };
+  const dispositivos = [...disp.entries()].sort().map(([ns, d]) => ({
+    num_serie: ns, registros: d.n, instantes: d.inst, max_por_segundo: d.maxRep, inicio: iso(d.ini), fim: iso(d.fim),
+    intervalo_s: medianaDt(d.dts), latencia_media_s: d.latN ? arred(d.latSoma / d.latN, 1) : null}));
+  const sensores = COLS.map((c, i) => {
+    const tot = g.n, n = g.val[i], nulos = tot - n, bin = c.c.startsWith("end_course");
+    const situacao = !n ? "com nulos" : g.zeros[i] === tot ? "sem leitura (tudo zero)" : g.fora[i] ? "fora da faixa"
+      : !bin && g.lim[i] / tot >= 0.5 ? "saturado no limite" : nulos ? "com nulos" : g.mn[i] === g.mx[i] ? "valor constante" : "ok";
+    return {grupo: c.g, coluna: c.c, unidade: c.u, faixa: `${c.lo} a ${c.hi}`,
+      min: n ? arred(g.mn[i]) : null, media: n ? arred(g.soma[i] / n) : null, max: n ? arred(g.mx[i]) : null,
+      nulos, pct_zeros: arred(100 * g.zeros[i] / tot, 1), fora_faixa: g.fora[i],
+      pct_no_limite: bin ? null : arred(100 * g.lim[i] / tot, 1), situacao};
+  });
+  const ini = Math.min(...dispositivos.map(d => ms(d.inicio))), fim = Math.max(...dispositivos.map(d => ms(d.fim)));
+  const dados = {
+    registros: g.n, dispositivos_qtd: disp.size, inicio: iso(ini), fim: iso(fim),
+    latencia_media_s: g.latN ? arred(g.latSoma / g.latN, 1) : null, latencia_max_s: g.latN ? arred(g.latMax, 1) : null,
+    dispositivos, sensores,
+    por_dia: [...dias.entries()].sort().map(([dia, x]) => ({dia, registros: x.n, inicio: iso(x.ini).slice(11), fim: iso(x.fim).slice(11)})),
+  };
+  const medias = COLS.map((_, i) => g.val[i] ? g.soma[i] / g.val[i] : 0);
+  const analises = new Map();
+  for (const [ns, am] of [...amostras.entries()].sort()) {
+    const dd = dispositivos.find(x => x.num_serie === ns);
+    analises.set(ns, analisar(am, medias, {latencia: dd?.latencia_media_s, maxPorSeg: dd?.max_por_segundo, sensores}));
+  }
+  return {dados, analises};
+}
+
+// ============================================================================
+// Análise: ordena pelo horímetro (relógio por amostra) e calcula indicadores
+// ============================================================================
+function analisar(am, medias, extra) {
+  const n = am.t.length, V = am.v, hmA = V[IX.hour_meter];
+  let comHm = 0; for (let k = 0; k < n; k++) if (isFinite(hmA[k])) comHm++;
+  const usaHm = comHm >= n * 0.9;
+  const idx = [];
+  for (let k = 0; k < n; k++) if (!usaHm || isFinite(hmA[k])) idx.push(k);
+  const clk = k => usaHm ? hmA[k] : am.t[k] / 1000;
+  idx.sort((a, b) => clk(a) - clk(b));
+
+  // horário estimado: ajuste linear time ~ horímetro (o campo time agrupa leituras de momentos diferentes)
+  let A = 0, B = 1000;
+  if (usaHm) {
+    let mc = 0, mt = 0; for (const k of idx) { mc += hmA[k]; mt += am.t[k]; } mc /= idx.length; mt /= idx.length;
+    let cv = 0, vr = 0; for (const k of idx) { const dc = hmA[k] - mc; cv += dc * (am.t[k] - mt); vr += dc * dc; }
+    B = vr ? cv / vr : 1000; if (!(B > 0)) B = 1000; A = mt - B * mc;
+  }
+  const tEst = c => A + B * c;
+  const c0 = clk(idx[0]), cN = clk(idx[idx.length - 1]), span = cN - c0;
+  const W = Math.max(60, Math.ceil(span / 700 / 60) * 60);
+
+  // intensidade dinâmica horizontal: maior |a_xy| entre os 4 acelerômetros, sem o viés de montagem
+  const AX = [1, 2, 3, 4].map(i => [IX[`ac${i}_x`], IX[`ac${i}_y`]]);
+  const ah = new Float32Array(idx.length);
+  for (let j = 0; j < idx.length; j++) {
+    const k = idx[j]; let m = 0;
+    for (const [ix, iy] of AX) {
+      const x = V[ix][k] - medias[ix], y = V[iy][k] - medias[iy];
+      if (isFinite(x) && isFinite(y)) { const h = Math.hypot(x, y); if (h > m) m = h; }
+    }
+    ah[j] = m;
+  }
+  const ahOrd = Float32Array.from(ah).sort();
+  const limiar = Math.max(0.6, ahOrd[Math.floor(ahOrd.length * 0.997)] || 0);
+
+  // janelas de W segundos do horímetro
+  const J = []; let w = null;
+  for (let j = 0; j < idx.length; j++) {
+    const k = idx[j], c = clk(k), q = Math.floor((c - c0) / W);
+    if (!w || w.q !== q) J.push(w = {q, c0: c, c1: c, n: 0, s: new Float64Array(NC), nn: new Float64Array(NC),
+      mn: new Float64Array(NC).fill(Infinity), mx: new Float64Array(NC).fill(-Infinity), la: [], lo: [], a2: 0, amax: 0, j0: j});
+    w.c1 = c; w.n++;
+    for (let i = 0; i < NC; i++) {
+      const v = V[i][k]; if (!isFinite(v)) continue;
+      w.nn[i]++; w.s[i] += v; if (v < w.mn[i]) w.mn[i] = v; if (v > w.mx[i]) w.mx[i] = v;
+    }
+    const la = V[IX.latitude][k], lo = V[IX.longitude][k];
+    if (isFinite(la) && isFinite(lo) && (la || lo)) { w.la.push(la); w.lo.push(lo); }
+    w.a2 += ah[j] * ah[j]; if (ah[j] > w.amax) w.amax = ah[j];
+  }
+  const mq = new Map(J.map((x, i) => [x.q, i]));
+  const med = (w, col) => w.nn[IX[col]] ? w.s[IX[col]] / w.nn[IX[col]] : null;
+  for (let i = 0; i < J.length; i++) {
+    const w = J[i];
+    w.cc = (w.c0 + w.c1) / 2; w.t = tEst(w.cc);
+    w.gap = i > 0 && w.cc - J[i - 1].cc > 2.5 * W;
+    w.lat = mediana(w.la); w.lon = mediana(w.lo); delete w.la; delete w.lo;
+    w.side = med(w, "angle_side"); w.front = med(w, "angle_front");
+    w.sideMn = w.nn[IX.angle_side] ? w.mn[IX.angle_side] : null; w.sideMx = w.nn[IX.angle_side] ? w.mx[IX.angle_side] : null;
+    w.sidePico = w.sideMn === null ? null : Math.max(Math.abs(w.sideMn), Math.abs(w.sideMx));
+    w.rampa = w.front === null ? null : Math.tan(w.front * Math.PI / 180) * 100;
+    w.cel = [1, 2, 3, 4].map(c => med(w, `load_cell_${c}`));
+    w.carga = w.cel.every(x => x !== null) ? w.cel.reduce((s, x) => s + x, 0) : null;
+    w.arms = Math.sqrt(w.a2 / w.n);
+    w.temp = med(w, "temperature"); w.umid = med(w, "humidity"); w.orv = orvalho(w.temp, w.umid);
+    w.tMn = w.nn[IX.temperature] ? w.mn[IX.temperature] : null; w.tMx = w.nn[IX.temperature] ? w.mx[IX.temperature] : null;
+    w.uMn = w.nn[IX.humidity] ? w.mn[IX.humidity] : null; w.uMx = w.nn[IX.humidity] ? w.mx[IX.humidity] : null;
+    w.ac = [1, 2, 3, 4].map(c => ["x", "y", "z"].map(e => med(w, `ac${c}_${e}`)));
+    const b1 = w.nn[IX.end_course_1] ? w.mx[IX.end_course_1] : null, b2 = w.nn[IX.end_course_2] ? w.mx[IX.end_course_2] : null;
+    w.basc = [b1, b2];
+    const dc = w.c1 - w.c0, od = w.nn[IX.odometer] ? w.mx[IX.odometer] - w.mn[IX.odometer] : null;
+    w.vOdo = dc >= W * 0.4 && od !== null ? od / 1e6 / (dc / 3600) : null;      // hodômetro tratado como milímetros
+    if (w.vOdo !== null && w.vOdo > 150) w.vOdo = null;
+  }
+  // velocidade pelo GPS: posição mediana das janelas vizinhas (descarta saltos > 130 km/h)
+  let descartes = 0;
+  for (let i = 0; i < J.length; i++) {
+    const w = J[i], a = J[i - 1], b = J[i + 1];
+    const p = a && !w.gap && a.lat !== null ? a : w, q = b && !b.gap && b.lat !== null ? b : w;
+    w.vGps0 = null;
+    if (p === q || p.lat === null || q.lat === null) continue;
+    const v = hav(p.lat, p.lon, q.lat, q.lon) / ((q.cc - p.cc) / 3600);
+    if (v <= 130) w.vGps0 = v; else descartes++;
+  }
+  const am50 = pct(J.map(w => w.arms), 0.5) || 0, am99 = pct(J.map(w => w.arms), 0.99) || 1;
+  const vo0 = J.map(w => w.vOdo);
+  for (let i = 0; i < J.length; i++) {
+    const viz = vo0.slice(Math.max(0, i - 2), i + 3).filter(x => x !== null);
+    J[i].vOdo = vo0[i] === null ? null : mediana(viz);
+  }
+  for (let i = 0; i < J.length; i++) {
+    const w = J[i];
+    const viz = [J[i - 1]?.vGps0, J[i + 1]?.vGps0].filter(x => x !== null && x !== undefined);
+    w.vGps = w.vGps0 === null || (!viz.length && w.vGps0 > 90) ? null : mediana([...viz, w.vGps0]);
+    w.v = w.vGps ?? w.vOdo ?? null;
+    w.fonteV = w.vGps !== null ? "GPS" : w.vOdo !== null ? "hodômetro" : "";
+    w.estab = w.side === null ? null : clamp(100 - 7 * Math.abs(w.side) - 30 * clamp((w.arms - am50) / Math.max(1e-6, am99 - am50), 0, 1), 0, 100);
+  }
+
+  // eventos dinâmicos (picos agrupados em 10 s)
+  const eventos = [];
+  for (let j = 0; j < idx.length; j++) {
+    if (ah[j] < limiar) continue;
+    const c = clk(idx[j]), ult = eventos[eventos.length - 1];
+    if (ult && c - ult.c <= 10) { if (ah[j] > ult.a) { ult.a = ah[j]; ult.j = j; ult.c = c; } }
+    else eventos.push({c, a: ah[j], j});
+  }
+  for (const e of eventos) {
+    e.i = mq.get(Math.floor((e.c - c0) / W)); const w = J[e.i];
+    e.t = tEst(e.c); e.lat = w.lat; e.lon = w.lon; e.v = w.v; e.side = w.side;
+  }
+  for (const e of eventos) J[e.i].evento = Math.max(J[e.i].evento || 0, e.a);
+
+  // paradas (v < 3 km/h por pelo menos 3 min)
+  const paradas = []; let run = null;
+  const fecha = () => { if (run && (run.c1 - run.c0 + W) >= 180) paradas.push(run); run = null; };
+  for (let i = 0; i < J.length; i++) {
+    const w = J[i];
+    if (w.v !== null && w.v < 3 && !w.gap) { if (!run) run = {i0: i, c0: w.cc, lat: w.lat, lon: w.lon, t: w.t}; run.i1 = i; run.c1 = w.cc; }
+    else fecha();
+  }
+  fecha();
+  for (const p of paradas) p.dur = p.c1 - p.c0 + W;
+
+  // resumo
+  let distGps = 0;
+  for (let i = 1; i < J.length; i++) {
+    const a = J[i - 1], b = J[i];
+    if (b.gap || a.lat === null || b.lat === null) continue;
+    const km = hav(a.lat, a.lon, b.lat, b.lon);
+    if (km / ((b.cc - a.cc) / 3600) <= 130) distGps += km;
+  }
+  let od0 = null, od1 = null;
+  for (const k of idx) { const v = V[IX.odometer][k]; if (isFinite(v)) { if (od0 === null) od0 = v; od1 = v; } }
+  const vs = J.map(w => w.v), mov = J.filter(w => w.v !== null && w.v >= 5);
+  const incl = mov.filter(w => w.sidePico !== null && Math.abs(w.side) >= 3);
+  const rampas = J.filter(w => w.rampa !== null && Math.abs(w.rampa) >= 6);
+  const cargas = mov.map(w => w.carga).filter(x => x !== null), cMed = media(J.map(w => w.carga));
+  const cvCarga = cargas.length > 2 ? Math.sqrt(media(cargas.map(x => (x - media(cargas)) ** 2))) / media(cargas) * 100 : null;
+  const cel = [0, 1, 2, 3].map(c => media(J.map(w => w.cel[c])));
+  const somaC = cel.every(x => x !== null) ? cel.reduce((s, x) => s + x, 0) : null;
+  const margens = J.filter(w => w.orv !== null).map(w => w.temp - w.orv);
+  const R = {
+    W, usaHm, B, limiar, descartes, eventos: eventos.sort((a, b) => b.a - a.a), paradas,
+    distGps, distOdo: od0 !== null ? (od1 - od0) / 1e6 : null,
+    tempoTotal: span, tempoMov: mov.length * W, tempoParado: paradas.reduce((s, p) => s + p.dur, 0),
+    vMax: pct(vs, 0.98), vMedMov: media(mov.map(w => w.v)), v85: pct(mov.map(w => w.v), 0.85),
+    inclN: incl.length, inclV: media(incl.map(w => w.v)), sideMax: pct(J.map(w => w.sidePico), 0.99), sideMaxAbs: Math.max(0, ...J.map(w => w.sidePico ?? 0)),
+    rampaN: rampas.length, rampaMax: pct(J.map(w => w.rampa === null ? null : Math.abs(w.rampa)), 0.99), rampaV: media(rampas.map(w => w.v)),
+    cargaMed: cMed, cvCarga, desA: somaC ? (cel[0] + cel[1] - cel[2] - cel[3]) / somaC * 100 : null, desB: somaC ? (cel[0] + cel[2] - cel[1] - cel[3]) / somaC * 100 : null, cel,
+    estabMed: media(J.map(w => w.estab)), estabMin: pct(J.map(w => w.estab), 0.01),
+    tMin: Math.min(...J.map(w => w.tMn ?? Infinity)), tMax: Math.max(...J.map(w => w.tMx ?? -Infinity)), uMax: Math.max(...J.map(w => w.uMx ?? -Infinity)),
+    margemOrv: margens.length ? Math.min(...margens) : null,
+    latencia: extra.latencia, maxPorSeg: extra.maxPorSeg, sensores: extra.sensores,
+    ini: J[0].t, fim: J[J.length - 1].t,
+  };
+  return {J, R};
+}
+
+// ============================================================================
+// Painel de análises
+// ============================================================================
+let AN = null, NS = null, MOM = 0, ABA = "vel";
+const CUR = [];     // funções que movem o cursor de cada gráfico/mapa para o momento atual
+
+function mostrarAnalises(analises, rotulo) {
+  AN = analises;
+  const lista = [...analises.keys()];
+  $("selDisp").innerHTML = lista.map(n => `<option>${esc(n)}</option>`).join("");
+  $("rotDisp").hidden = lista.length < 2;
+  NS = lista[0];
+  $("subInsights").textContent = rotulo || "";
+  for (const id of ["cardInsights", "cardCockpit", "cardGraf", "cardAuto"]) $(id).hidden = false;
+  renderizarTudo();
+}
+function ocultarAnalises() { for (const id of ["cardInsights", "cardCockpit", "cardGraf", "cardAuto"]) $(id).hidden = true; }
+function renderizarTudo() {
+  const {J, R} = AN.get(NS);
+  CUR.length = 0;
+  MOM = Math.max(0, J.findIndex(w => w.v !== null && w.v >= 5));
+  $("momento").max = J.length - 1;
+  montarCarrossel(J, R);
+  montarCockpit(J, R);
+  desenharGraficos();
+  montarAutonomia(J, R);
+  irPara(MOM);
+}
+$("selDisp").onchange = () => { NS = $("selDisp").value; renderizarTudo(); };
+
+// ---------------------------------------------------------------- carrossel
+function spark(vals, cor, {area = true, ref = null} = {}) {
+  const L = 300, A = 44, xs = vals.map((v, i) => [i, v]).filter(p => p[1] !== null && isFinite(p[1]));
+  if (xs.length < 2) return "";
+  const lo = Math.min(...xs.map(p => p[1]), ref ?? Infinity), hi = Math.max(...xs.map(p => p[1]), ref ?? -Infinity);
+  const X = i => i / (vals.length - 1) * L, Y = v => A - 3 - (hi === lo ? .5 : (v - lo) / (hi - lo)) * (A - 6);
+  const d = xs.map((p, k) => `${k ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+  const gid = "sp" + Math.random().toString(36).slice(2, 8);
+  return `<svg viewBox="0 0 ${L} ${A}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cor}" stop-opacity=".35"/><stop offset="1" stop-color="${cor}" stop-opacity="0"/></linearGradient></defs>
+    ${ref !== null ? `<line x1="0" x2="${L}" y1="${Y(ref)}" y2="${Y(ref)}" stroke="${cor}" stroke-opacity=".35" stroke-dasharray="3 4"/>` : ""}
+    ${area ? `<path d="${d}L${X(xs[xs.length - 1][0])},${A}L${X(xs[0][0])},${A}Z" fill="url(#${gid})"/>` : ""}
+    <path d="${d}" fill="none" stroke="${cor}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function reduz(J, f, n = 120) {      // série curta para sparkline
+  const k = Math.max(1, Math.ceil(J.length / n)), out = [];
+  for (let i = 0; i < J.length; i += k) out.push(media(J.slice(i, i + k).map(f)));
+  return out;
+}
+let carIdx = 0, carTimer = null;
+function montarCarrossel(J, R) {
+  const ev = R.eventos[0];
+  const slides = [
+    {tit: "Velocidade", num: fmt(R.vMedMov, 0), un: "km/h", sub: `média em movimento · máx. ${fmt(R.vMax, 0)} km/h · p85 ${fmt(R.v85, 0)} km/h`,
+     sp: spark(reduz(J, w => w.v), "#22d3ee"), txt: `Velocidade estimada pelo GPS (janelas de ${R.W / 60} min, ordem pelo horímetro).`},
+    {tit: "Percurso", num: fmt(R.distOdo ?? R.distGps, 0), un: "km", sub: `hodômetro (mm) · GPS ${fmt(R.distGps, 0)} km`,
+     sp: spark(reduz(J, w => w.v === null ? null : w.v >= 5 ? 1 : 0), "#3987e5"), txt: `${dur(R.tempoMov)} em movimento e ${R.paradas.length} paradas (${dur(R.tempoParado)}) em ${dur(R.tempoTotal)} de operação.`},
+    {tit: "Estabilidade", num: fmt(R.estabMed, 0), un: "/100", sub: `índice médio · mínimo ${fmt(R.estabMin, 0)} · pico lateral ${fmt(R.sideMaxAbs, 1)}°`,
+     sp: spark(reduz(J, w => w.estab), "#34d399"), txt: R.inclN ? `${R.inclN} janelas em movimento com inclinação lateral ≥ 3°; velocidade média nelas: ${fmt(R.inclV, 0)} km/h.` : "Nenhum trecho em movimento com inclinação lateral ≥ 3°."},
+    {tit: "Carga", num: fmt(R.cargaMed, 0), un: "", sub: `soma das 4 células (unidade não informada) · variação ${fmt(R.cvCarga, 1)}%`,
+     sp: spark(reduz(J, w => w.carga), "#c98500"), txt: `Desbalanceamento: células 1+2 vs 3+4 = ${fmt(R.desA, 1)}% · 1+3 vs 2+4 = ${fmt(R.desB, 1)}%.`},
+    {tit: "Eventos dinâmicos", num: fmt(R.eventos.length, 0), un: "eventos", sub: `aceleração horizontal > ${fmt(R.limiar, 2)} G`,
+     sp: spark(reduz(J, w => w.arms), "#d95926"), txt: ev ? `Maior pico: ${fmt(ev.a, 2)} G às ${hhmm(ev.t)} UTC${ev.v !== null ? `, a ${fmt(ev.v, 0)} km/h` : ""}.` : "Nenhum pico acima do limiar."},
+    {tit: "Rampas", num: fmt(R.rampaMax, 1), un: "%", sub: `inclinação frontal (p99) · ${R.rampaN} janelas ≥ 6%`,
+     sp: spark(reduz(J, w => w.rampa), "#9085e9", {ref: 0}), txt: R.rampaN ? `Velocidade média em rampas ≥ 6%: ${fmt(R.rampaV, 0)} km/h.` : "Sem rampas fortes no período."},
+    {tit: "Ambiente", num: `${fmt(R.tMin, 0)}–${fmt(R.tMax, 0)}`, un: "°C", sub: `umidade máx. ${fmt(R.uMax, 0)}% · margem mín. ao orvalho ${fmt(R.margemOrv, 1)} °C`,
+     sp: spark(reduz(J, w => w.temp), "#e66767"), txt: R.margemOrv !== null && R.margemOrv < 2 ? "Margem ao ponto de orvalho abaixo de 2 °C: possível condensação/pista úmida." : "Sem indício de condensação no período."},
+    {tit: "Tempo real", num: dur(R.latencia), un: "", sub: "latência média até o lake",
+     sp: "", txt: `Latência alta para controle: decisões de condução precisam rodar embarcadas (borda). Até ${fmt(R.maxPorSeg, 0)} leituras chegam com o mesmo horário.`},
+  ];
+  $("trilho").innerHTML = slides.map((s, i) => `<div class="slide" role="group" aria-label="${i + 1} de ${slides.length}"><div class="cartao">
+      <div class="tit"><span>${esc(s.tit)}</span><span style="color:var(--mudo)">${String(i + 1).padStart(2, "0")}</span></div>
+      <div class="num">${esc(s.num)}<small>${esc(s.un)}</small></div><div class="sub">${esc(s.sub)}</div>${s.sp || "<div></div>"}<p>${esc(s.txt)}</p></div></div>`).join("");
+  carIdx = 0; atualizaCarrossel(); iniciaCarrossel();
+}
+const carK = () => +getComputedStyle($("carrossel")).getPropertyValue("--k") || 1;
+const carMax = () => Math.max(0, $("trilho").children.length - carK());
+function atualizaCarrossel() {
+  const max = carMax(); if (carIdx > max) carIdx = 0; if (carIdx < 0) carIdx = max;
+  $("trilho").style.transform = `translateX(${-carIdx * 100 / carK()}%)`;
+  $("pontos").innerHTML = Array.from({length: max + 1}, (_, i) => `<button class="${i === carIdx ? "on" : ""}" data-i="${i}" aria-label="Ir para ${i + 1}"></button>`).join("");
+}
+function iniciaCarrossel() {
+  clearInterval(carTimer);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  carTimer = setInterval(() => { carIdx++; atualizaCarrossel(); }, 5500);
+}
+$("carAnt").onclick = () => { carIdx--; atualizaCarrossel(); iniciaCarrossel(); };
+$("carProx").onclick = () => { carIdx++; atualizaCarrossel(); iniciaCarrossel(); };
+$("pontos").onclick = e => { if (e.target.dataset.i) { carIdx = +e.target.dataset.i; atualizaCarrossel(); iniciaCarrossel(); } };
+$("carrossel").onmouseenter = () => clearInterval(carTimer);
+$("carrossel").onmouseleave = iniciaCarrossel;
+$("carrossel").onkeydown = e => { if (e.key === "ArrowRight") $("carProx").onclick(); if (e.key === "ArrowLeft") $("carAnt").onclick(); };
+addEventListener("resize", () => { if (AN) atualizaCarrossel(); });
+
+// ---------------------------------------------------------------- cockpit
+let VMAXG = 120;
+function montarCockpit(J, R) {
+  VMAXG = Math.max(100, Math.ceil(((R.vMax || 0) * 1.1) / 20) * 20);
+  const m = mapaSvg(J, R, {L: 760, A: 300, mini: true});
+  $("gMapa").innerHTML = ""; $("gMapa").appendChild(m.el);
+  CUR.push(m.marcar);
+  $("txtMapa").innerHTML = `<span style="font-weight:500;letter-spacing:0;text-transform:none">${R.eventos.length} eventos · ${R.paradas.length} paradas</span>`;
+}
+function arco(cx, cy, r, a0, a1) {
+  const p = a => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${x0.toFixed(2)},${y0.toFixed(2)}A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)}`;
+}
+function gaugeVel(w) {
+  const v = w.v, a0 = 150, a1 = 390, frac = v === null ? 0 : clamp(v / VMAXG, 0, 1), aa = a0 + (a1 - a0) * frac;
+  let t = "";
+  for (let k = 0; k <= VMAXG; k += 20) {
+    const a = (a0 + (a1 - a0) * k / VMAXG) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    t += `<line x1="${100 + 70 * c}" y1="${100 + 70 * s}" x2="${100 + 78 * c}" y2="${100 + 78 * s}" stroke="#5f7493" stroke-width="2"/>
+      <text x="${100 + 58 * c}" y="${104 + 58 * s}" text-anchor="middle" style="font-size:9px">${k}</text>`;
+  }
+  $("rVel").textContent = w.fonteV === "GPS" && w.vOdo !== null ? `hodômetro ${fmt(w.vOdo, 0)} km/h` : w.fonteV ? `fonte: ${w.fonteV}` : "sem posição";
+  return `<svg viewBox="0 0 200 150" role="img" aria-label="Velocidade ${fmt(v, 0)} km/h">
+    <defs><linearGradient id="gv" x1="0" x2="1"><stop offset="0" stop-color="#3987e5"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+    <filter id="brilho"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <path d="${arco(100, 100, 84, a0, a1)}" fill="none" stroke="rgba(147,167,195,.15)" stroke-width="10" stroke-linecap="round"/>
+    ${frac > 0 ? `<path d="${arco(100, 100, 84, a0, aa)}" fill="none" stroke="url(#gv)" stroke-width="10" stroke-linecap="round" filter="url(#brilho)"/>` : ""}
+    ${t}
+    <text x="100" y="104" text-anchor="middle" style="font-family:Rajdhani;font-size:44px;font-weight:700;fill:#e6f1ff">${v === null ? "–" : fmt(v, 0)}</text>
+    <text x="100" y="124" text-anchor="middle" style="font-size:11px;letter-spacing:.1em">KM/H</text></svg>`;
+}
+function gaugeEstab(w) {
+  const ang = w.side ?? 0, cor = Math.abs(ang) >= 6 ? "#f87171" : Math.abs(ang) >= 3 ? "#fbbf24" : "#34d399";
+  let esc_ = "";
+  for (let g = -15; g <= 15; g += 5) {
+    const a = (-90 + g * 3) * Math.PI / 180;
+    esc_ += `<line x1="${100 + 74 * Math.cos(a)}" y1="${112 + 74 * Math.sin(a)}" x2="${100 + 82 * Math.cos(a)}" y2="${112 + 82 * Math.sin(a)}" stroke="${Math.abs(g) >= 6 ? "#f87171" : Math.abs(g) >= 3 ? "#fbbf24" : "#5f7493"}" stroke-width="2"/>
+      <text x="${100 + 92 * Math.cos(a)}" y="${115 + 92 * Math.sin(a)}" text-anchor="middle" style="font-size:9px">${g}°</text>`;
+  }
+  const ap = (-90 + clamp(ang, -15, 15) * 3) * Math.PI / 180;
+  $("rEstab").textContent = `lateral (traseira) · frontal ${fmt(w.front, 1)}° · rampa ${fmt(w.rampa, 1)}%`;
+  return `<svg viewBox="0 0 200 150" role="img" aria-label="Inclinação lateral ${fmt(ang, 1)} graus">
+    <path d="${arco(100, 112, 78, 225, 315)}" fill="none" stroke="rgba(147,167,195,.15)" stroke-width="3"/>
+    ${esc_}
+    <line x1="30" x2="170" y1="140" y2="140" stroke="rgba(103,232,249,.35)" stroke-dasharray="4 4"/>
+    <g transform="rotate(${clamp(ang, -15, 15) * 3} 100 140)">
+      <rect x="62" y="74" width="76" height="56" rx="5" fill="rgba(34,211,238,.10)" stroke="${cor}" stroke-width="2"/>
+      <line x1="100" y1="78" x2="100" y2="126" stroke="${cor}" stroke-opacity=".5"/>
+      <rect x="66" y="130" width="14" height="10" rx="2" fill="${cor}"/><rect x="120" y="130" width="14" height="10" rx="2" fill="${cor}"/>
+    </g>
+    <circle cx="${100 + 78 * Math.cos(ap)}" cy="${112 + 78 * Math.sin(ap)}" r="5" fill="${cor}"/>
+    <text x="100" y="62" text-anchor="middle" style="font-family:Rajdhani;font-size:26px;font-weight:700;fill:${cor}">${fmt(ang, 1)}°</text></svg>`;
+}
+function gaugeCarga(w) {
+  const c = w.cel, tot = w.carga;
+  if (tot === null) { $("rCarga").textContent = ""; return `<div class="vazio">Sem leitura das células</div>`; }
+  const P = [[70, 52], [130, 52], [70, 122], [130, 122]];
+  const cir = c.map((v, i) => {
+    const sh = v / tot, r = 10 + 60 * Math.max(0, sh - .15);
+    return `<circle cx="${P[i][0]}" cy="${P[i][1]}" r="${r.toFixed(1)}" fill="rgba(201,133,0,.18)" stroke="#c98500" stroke-width="2"/>
+      <text x="${P[i][0]}" y="${P[i][1] + 4}" text-anchor="middle" style="font-family:Rajdhani;font-size:13px;font-weight:700;fill:#e6f1ff">${fmt(sh * 100, 1)}%</text>
+      <text x="${P[i][0] + (i % 2 ? 26 : -26)}" y="${P[i][1] + 4}" text-anchor="middle" style="font-size:9px">C${i + 1}</text>`;
+  }).join("");
+  const da = (c[0] + c[1] - c[2] - c[3]) / tot * 100, db = (c[0] + c[2] - c[1] - c[3]) / tot * 100;
+  $("rCarga").textContent = `total ${fmt(tot, 0)} · 1+2 vs 3+4 ${fmt(da, 1)}% · 1+3 vs 2+4 ${fmt(db, 1)}%`;
+  return `<svg viewBox="0 0 200 160" role="img" aria-label="Distribuição de carga">
+    <rect x="40" y="20" width="120" height="134" rx="10" fill="rgba(34,211,238,.04)" stroke="rgba(103,232,249,.35)"/>
+    <path d="M92,12 L100,4 L108,12" fill="none" stroke="rgba(103,232,249,.6)" stroke-width="2"/>
+    ${cir}</svg>`;
+}
+const ALERTAS = [
+  {id: "incl", ico: "⟲", txt: "Inclinação lateral ≥ 3°", f: w => w.side !== null && Math.abs(w.side) >= 3, forte: w => Math.abs(w.side) >= 6},
+  {id: "rampa", ico: "⟋", txt: "Rampa ≥ 6%", f: w => w.rampa !== null && Math.abs(w.rampa) >= 6, forte: w => Math.abs(w.rampa) >= 10},
+  {id: "din", ico: "⚡", txt: "Evento dinâmico no intervalo", f: w => !!w.evento, forte: () => true},
+  {id: "basc", ico: "▲", txt: "Báscula acionada", f: w => (w.basc[0] || 0) > 0 || (w.basc[1] || 0) > 0, forte: w => (w.v || 0) >= 5},
+  {id: "orv", ico: "≋", txt: "Risco de condensação (< 2 °C do orvalho)", f: w => w.orv !== null && w.temp - w.orv < 2, forte: () => false},
+  {id: "parado", ico: "■", txt: "Veículo parado", f: w => w.v !== null && w.v < 3, forte: () => false},
+];
+function atualizaCockpit(w) {
+  $("gVel").innerHTML = gaugeVel(w);
+  $("gEstab").innerHTML = gaugeEstab(w);
+  $("gCarga").innerHTML = gaugeCarga(w);
+  $("txtEstab").innerHTML = w.estab === null ? "" : `<span class="chip ${w.estab >= 75 ? "c-ok" : w.estab >= 55 ? "c-aviso" : "c-falha"}">${fmt(w.estab, 0)}/100</span>`;
+  $("fonteVel").innerHTML = w.fonteV ? `<span class="chip c-off" style="color:var(--ciano2)">${w.fonteV}</span>` : "";
+  $("gAlertas").innerHTML = ALERTAS.map(a => { const on = a.f(w); return `<div class="alerta ${on ? "on" : ""} ${on && a.forte(w) ? "forte" : ""}"><i>${a.ico}</i>${esc(a.txt)}</div>`; }).join("");
+  $("gLeit").innerHTML = [["Temp.", fmt(w.temp, 1) + " °C"], ["Umidade", fmt(w.umid, 0) + "%"], ["Dinâmica RMS", fmt(w.arms, 2) + " G"], ["Pico", fmt(w.amax, 2) + " G"]]
+    .map(([r, v]) => `<div class="leit"><div class="r">${r}</div><div class="v">${v}</div></div>`).join("");
+}
+function irPara(i) {
+  const {J} = AN.get(NS);
+  MOM = clamp(i, 0, J.length - 1);
+  const w = J[MOM];
+  $("momento").value = MOM;
+  $("momentoTxt").textContent = `${ddhhmm(w.t)} UTC`;
+  atualizaCockpit(w);
+  for (const f of CUR) f(MOM);
+}
+$("momento").oninput = e => irPara(+e.target.value);
+let playTimer = null;
+function play(on) {
+  clearInterval(playTimer); playTimer = null;
+  $("play").textContent = on ? "❚❚" : "▶";
+  if (!on) return;
+  playTimer = setInterval(() => {
+    const {J} = AN.get(NS);
+    if (MOM >= J.length - 1) { play(false); return; }
+    irPara(MOM + 1);
+  }, 1000 / (+$("velPlay").value * 2));
+}
+$("play").onclick = () => { if (!playTimer && MOM >= +$("momento").max) irPara(0); play(!playTimer); };
+$("velPlay").onchange = () => { if (playTimer) play(true); };
+
+// ---------------------------------------------------------------- mapa
+const RAMPA = ["#1e3a5f", "#0e7490", "#06b6d4", "#22d3ee", "#a5f3fc"];
+function corVel(v, vmax) {
+  if (v === null) return "#475569";
+  const x = clamp(v / vmax, 0, 1) * (RAMPA.length - 1), i = Math.min(RAMPA.length - 2, Math.floor(x)), f = x - i;
+  const h = c => [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16)), a = h(RAMPA[i]), b = h(RAMPA[i + 1]);
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(",")})`;
+}
+function mapaSvg(J, R, {L = 760, A = 300, mini = false} = {}) {
+  const el = document.createElement("div"); el.style.position = "relative";
+  const pts = J.map((w, i) => [w.lon, w.lat, i]).filter(p => p[1] !== null);
+  if (pts.length < 2) { el.innerHTML = `<div class="vazio">Sem posição GPS</div>`; return {el, marcar: () => {}}; }
+  const m = 18;
+  const x0 = Math.min(...pts.map(p => p[0])), x1 = Math.max(...pts.map(p => p[0])), y0 = Math.min(...pts.map(p => p[1])), y1 = Math.max(...pts.map(p => p[1]));
+  const cosl = Math.cos((y0 + y1) / 2 * Math.PI / 180);
+  const dx = Math.max((x1 - x0) * cosl, 1e-6), dy = Math.max(y1 - y0, 1e-6), e = Math.min((L - 2 * m) / dx, (A - 2 * m - 16) / dy);
+  const X = lo => L / 2 + (lo - (x0 + x1) / 2) * cosl * e, Y = la => (A - 16) / 2 - (la - (y0 + y1) / 2) * e;
+  const vmax = Math.max(60, R.vMax || 0);
+  let seg = "";
+  for (let k = 1; k < pts.length; k++) {
+    const a = pts[k - 1], b = pts[k], w = J[b[2]];
+    if (w.gap) continue;
+    seg += `<line x1="${X(a[0]).toFixed(1)}" y1="${Y(a[1]).toFixed(1)}" x2="${X(b[0]).toFixed(1)}" y2="${Y(b[1]).toFixed(1)}" stroke="${corVel(w.v, vmax)}" stroke-width="${mini ? 3 : 3.5}" stroke-linecap="round"/>`;
+  }
+  const evs = R.eventos.filter(ev => ev.lat !== null).slice(0, 25).map((ev, k) => {
+    const x = X(ev.lon), y = Y(ev.lat);
+    return `<path d="M${x},${y - 7}L${x + 6},${y + 4}L${x - 6},${y + 4}Z" fill="#fbbf24" stroke="#050a14" stroke-width="1.2" data-i="${ev.i}"><title>Evento ${k + 1}: ${fmt(ev.a, 2)} G às ${hhmm(ev.t)} UTC</title></path>`;
+  }).join("");
+  const pars = R.paradas.filter(p => p.lat !== null).map(p => `<rect x="${X(p.lon) - 4}" y="${Y(p.lat) - 4}" width="8" height="8" rx="1.5" fill="#e6f1ff" stroke="#050a14" data-i="${p.i0}"><title>Parada de ${dur(p.dur)} às ${hhmm(p.t)} UTC</title></rect>`).join("");
+  const a = pts[0], b = pts[pts.length - 1];
+  const gid = "lg" + Math.random().toString(36).slice(2, 7);
+  const leg = `<defs><linearGradient id="${gid}" x1="0" x2="1">${RAMPA.map((c, k) => `<stop offset="${k / (RAMPA.length - 1)}" stop-color="${c}"/>`).join("")}</linearGradient></defs>
+    <rect x="${m}" y="${A - 12}" width="120" height="6" rx="3" fill="url(#${gid})"/>
+    <text x="${m}" y="${A - 16}" style="font-size:9.5px">0</text><text x="${m + 120}" y="${A - 16}" text-anchor="end" style="font-size:9.5px">${fmt(vmax, 0)} km/h</text>
+    <path d="M${m + 140},${A - 7}l5,-9l5,9z" fill="#fbbf24"/><text x="${m + 154}" y="${A - 7}" style="font-size:10px">evento</text>
+    <rect x="${m + 202}" y="${A - 13}" width="8" height="8" rx="1.5" fill="#e6f1ff"/><text x="${m + 214}" y="${A - 6}" style="font-size:10px">parada</text>`;
+  el.innerHTML = `<svg viewBox="0 0 ${L} ${A}" role="img" aria-label="Trajeto GPS colorido pela velocidade" style="cursor:pointer">${leg}${seg}
+    <circle cx="${X(a[0])}" cy="${Y(a[1])}" r="5" fill="#050a14" stroke="#e6f1ff" stroke-width="2"/><text x="${X(a[0]) + 9}" y="${Y(a[1]) + 4}" style="font-size:11px;fill:#e6f1ff">início</text>
+    <circle cx="${X(b[0])}" cy="${Y(b[1])}" r="5" fill="#22d3ee"/><text x="${X(b[0]) + 9}" y="${Y(b[1]) + 4}" style="font-size:11px;fill:#e6f1ff">fim</text>
+    ${pars}${evs}
+    <g class="atual" visibility="hidden"><circle r="12" fill="rgba(34,211,238,.18)"><animate attributeName="r" values="7;15;7" dur="1.6s" repeatCount="indefinite"/></circle><circle r="5.5" fill="#22d3ee" stroke="#050a14" stroke-width="2"/></g></svg>`;
+  const g = el.querySelector(".atual"), sv = el.querySelector("svg");
+  const marcar = i => {
+    let k = i; while (k >= 0 && J[k].lat === null) k--;
+    if (k < 0) { g.setAttribute("visibility", "hidden"); return; }
+    g.setAttribute("transform", `translate(${X(J[k].lon).toFixed(1)},${Y(J[k].lat).toFixed(1)})`); g.setAttribute("visibility", "visible");
+  };
+  sv.addEventListener("click", ev => {
+    if (ev.target.dataset.i) { irPara(+ev.target.dataset.i); return; }
+    const r = sv.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * L, py = (ev.clientY - r.top) / r.height * A;
+    let best = null, bd = Infinity;
+    for (const p of pts) { const d = (X(p[0]) - px) ** 2 + (Y(p[1]) - py) ** 2; if (d < bd) { bd = d; best = p[2]; } }
+    if (best !== null && bd < 400) irPara(best);
+  });
+  return {el, marcar};
+}
+
+// ---------------------------------------------------------------- gráficos
+const COR = {s1: "#3987e5", s2: "#d95926", s3: "#199e70", s4: "#c98500", ciano: "#22d3ee", vio: "#9085e9", rosa: "#e66767"};
+function escalaBonita(lo, hi, n = 4) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const bruto = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(bruto)));
+  const p = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= bruto);
+  const a = Math.floor(lo / p) * p, b = Math.ceil(hi / p) * p, ticks = [];
+  for (let v = a; v <= b + p / 2; v += p) ticks.push(+v.toFixed(10));
+  return {a, b, ticks};
+}
+const rot = v => Math.abs(v) >= 10000 ? v.toLocaleString("pt-BR", {notation: "compact", maximumFractionDigits: 1}) : v.toLocaleString("pt-BR", {maximumFractionDigits: 2});
+
+// opts: {titulo, un, series:[{nome, cor, f, area, faixa:[fmin,fmax], tracejado}], bandas:[{de, ate, cor}], refs:[{y, rot}], degrau, yMin, yMax, eventos}
+function grafico(J, R, o, {L = 520, A = 200} = {}) {
+  const ml = 46, mr = 12, mt = 10, mb = 24, w = L - ml - mr, h = A - mt - mb;
+  const el = document.createElement("div"); el.className = "graf";
+  let lo = Infinity, hi = -Infinity;
+  for (const s of o.series) for (const p of J) {
+    for (const f of s.faixa || [s.f]) { const v = f(p); if (v !== null && v !== undefined && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }
+  }
+  const leg = o.series.length > 1 || o.legenda ? `<div class="legenda">${o.series.map(s => `<span><i style="background:${s.cor}${s.tracejado ? ";opacity:.7" : ""}"></i>${esc(s.nome)}</span>`).join("")}${o.legenda ? `<span>${esc(o.legenda)}</span>` : ""}</div>` : `<div class="legenda"></div>`;
+  const cab = `<h3>${esc(o.titulo)} <small>· ${esc(o.un)}</small></h3>${leg}`;
+  if (lo === Infinity) { el.innerHTML = cab + `<div class="vazio">Sem leituras</div>`; return el; }
+  if (o.yMin !== undefined) lo = Math.min(lo, o.yMin); if (o.yMax !== undefined) hi = Math.max(hi, o.yMax);
+  for (const r of o.refs || []) { lo = Math.min(lo, r.y); hi = Math.max(hi, r.y); }
+  const ey = o.degrau ? {a: -0.1, b: 1.1, ticks: [0, 1]} : escalaBonita(lo, hi);
+  const t0 = J[0].t, t1 = J[J.length - 1].t || t0 + 1, longo = t1 - t0 > 36 * 3600e3;
+  const X = t => ml + (t1 === t0 ? w / 2 : (t - t0) / (t1 - t0) * w), Y = v => mt + h - (clamp(v, ey.a, ey.b) - ey.a) / (ey.b - ey.a) * h;
+  let svg = "", defs = "";
+  for (const b of o.bandas || []) svg += `<rect x="${ml}" width="${w}" y="${Y(Math.min(b.ate, ey.b))}" height="${Math.max(0, Y(Math.max(b.de, ey.a)) - Y(Math.min(b.ate, ey.b)))}" fill="${b.cor}"/>`;
+  for (const v of ey.ticks) svg += `<line x1="${ml}" x2="${L - mr}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(147,167,195,.12)"/><text x="${ml - 7}" y="${Y(v) + 4}" text-anchor="end">${rot(v)}</text>`;
+  for (const r of o.refs || []) svg += `<line x1="${ml}" x2="${L - mr}" y1="${Y(r.y)}" y2="${Y(r.y)}" stroke="rgba(230,241,255,.35)" stroke-dasharray="4 4"/>${r.rot ? `<text x="${L - mr}" y="${Y(r.y) - 4}" text-anchor="end" style="font-size:10px">${esc(r.rot)}</text>` : ""}`;
+  const nt = longo ? 4 : 6;
+  for (let k = 0; k <= nt; k++) { const t = t0 + (t1 - t0) * k / nt; svg += `<text x="${X(t)}" y="${A - 6}" text-anchor="${k === 0 ? "start" : k === nt ? "end" : "middle"}">${longo ? ddhhmm(t) : hhmm(t)}</text>`; }
+  o.series.forEach((s, si) => {
+    const gid = "g" + Math.random().toString(36).slice(2, 8);
+    defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.cor}" stop-opacity=".32"/><stop offset="1" stop-color="${s.cor}" stop-opacity="0"/></linearGradient>`;
+    let d = "", seg = [], faixa = [];
+    const fechar = () => {
+      if (s.area && seg.length > 1) svg += `<path d="M${seg[0][0]},${mt + h}${seg.map(p => `L${p[0]},${p[1]}`).join("")}L${seg[seg.length - 1][0]},${mt + h}Z" fill="url(#${gid})"/>`;
+      if (faixa.length > 1) svg += `<polygon points="${faixa.map(q => `${q[0]},${q[1]}`).join(" ")} ${faixa.slice().reverse().map(q => `${q[0]},${q[2]}`).join(" ")}" fill="${s.cor}" opacity=".16"/>`;
+      seg = []; faixa = [];
+    };
+    let ant = false;
+    for (const p of J) {
+      const v = s.f(p);
+      if (v === null || v === undefined || !isFinite(v) || p.gap) { fechar(); ant = false; if (v === null || v === undefined || !isFinite(v)) continue; }
+      const x = X(p.t).toFixed(1), y = Y(v).toFixed(1);
+      d += !ant ? `M${x},${y}h0.01` : o.degrau ? `H${x}V${y}` : `L${x},${y}`;
+      seg.push([x, y]);
+      if (s.faixa) { const a = s.faixa[0](p), b = s.faixa[1](p); if (a !== null && b !== null) faixa.push([x, Y(a).toFixed(1), Y(b).toFixed(1)]); }
+      ant = true;
+    }
+    fechar();
+    svg += `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="${s.largura || 2}" stroke-linejoin="round" stroke-linecap="round"${s.tracejado ? ` stroke-dasharray="5 4" opacity=".85"` : ""}/>`;
+  });
+  for (const ev of (o.eventos ? R.eventos : [])) svg += `<path d="M${X(ev.t)},${mt + 2}l4,7h-8z" fill="#fbbf24"/>`;
+  svg += `<line class="mom" y1="${mt}" y2="${mt + h}" stroke="#22d3ee" stroke-width="1.5" opacity=".9"/>
+    <line class="cruz" y1="${mt}" y2="${mt + h}" stroke="rgba(230,241,255,.5)" stroke-dasharray="3 3" visibility="hidden"/>
+    <rect x="${ml}" y="${mt}" width="${w}" height="${h}" fill="transparent"/>`;
+  el.innerHTML = cab + `<svg viewBox="0 0 ${L} ${A}" role="img" aria-label="${esc(o.titulo)}"><defs>${defs}</defs>${svg}</svg><div class="dica" hidden></div>`;
+  const sv = el.querySelector("svg"), cruz = el.querySelector(".cruz"), dica = el.querySelector(".dica"), mom = el.querySelector(".mom");
+  const perto = e => {
+    const r = sv.getBoundingClientRect(), t = t0 + ((e.clientX - r.left) / r.width * L - ml) / w * (t1 - t0);
+    let a = 0, b = J.length - 1;
+    while (b - a > 1) { const m = (a + b) >> 1; if (J[m].t < t) a = m; else b = m; }
+    return Math.abs(J[a].t - t) <= Math.abs(J[b].t - t) ? a : b;
+  };
+  sv.addEventListener("pointermove", e => {
+    const i = perto(e), p = J[i];
+    cruz.setAttribute("x1", X(p.t)); cruz.setAttribute("x2", X(p.t)); cruz.setAttribute("visibility", "visible");
+    dica.innerHTML = `<div class="h">${ddhhmm(p.t)} UTC</div>` + o.series.map(s => {
+      const v = s.f(p);
+      return `<div><i style="display:inline-block;width:10px;height:3px;border-radius:2px;background:${s.cor};margin-right:6px;vertical-align:3px"></i>${esc(s.nome)}: <b>${v === null || v === undefined ? "–" : fmt(v, o.casas ?? 2)}</b> ${esc(o.unCurta || "")}</div>`;
+    }).join("") + `<div class="h" style="margin:4px 0 0">clique para ver no cockpit</div>`;
+    dica.hidden = false;
+    const pr = el.getBoundingClientRect(), px = e.clientX - pr.left;
+    dica.style.top = (e.clientY - pr.top + 14) + "px";
+    dica.style.left = px > pr.width / 2 ? "" : (px + 14) + "px";
+    dica.style.right = px > pr.width / 2 ? (pr.width - px + 14) + "px" : "";
+  });
+  sv.addEventListener("pointerleave", () => { cruz.setAttribute("visibility", "hidden"); dica.hidden = true; });
+  sv.addEventListener("click", e => { irPara(perto(e)); $("cardCockpit").scrollIntoView({behavior: "smooth", block: "start"}); });
+  CUR.push(i => { const x = X(J[i].t); mom.setAttribute("x1", x); mom.setAttribute("x2", x); });
+  return el;
+}
+
+const ABAS = [
+  {id: "vel", nome: "Velocidade"}, {id: "estab", nome: "Estabilidade"}, {id: "carga", nome: "Carga"},
+  {id: "din", nome: "Dinâmica"}, {id: "amb", nome: "Ambiente"}, {id: "acel", nome: "Acelerômetros (bruto)"},
+  {id: "basc", nome: "Báscula"}, {id: "mapa", nome: "Trajeto"},
+];
+function desenharGraficos() {
+  const {J, R} = AN.get(NS);
+  for (let k = CUR.length - 1; k >= 0; k--) if (CUR[k].graf) CUR.splice(k, 1);
+  const antes = CUR.length;
+  $("abas").innerHTML = ABAS.map(a => `<button class="aba" role="tab" data-aba="${a.id}" aria-selected="${a.id === ABA}">${esc(a.nome)}</button>`).join("");
+  const G = [], grande = {L: 1100, A: 330}, med = {L: 540, A: 210};
+  const um = o => G.push(grafico(J, R, o, grande));
+  const dois = o => G.push(grafico(J, R, o, med));
+  if (ABA === "vel") {
+    um({titulo: "Velocidade estimada", un: "km/h · GPS (posição mediana a cada janela) e hodômetro (assumindo mm)", unCurta: "km/h", casas: 0,
+      series: [{nome: "GPS", cor: COR.ciano, f: w => w.vGps, area: true, largura: 2.5}, {nome: "Hodômetro (mediana de 5 janelas)", cor: COR.s2, f: w => w.vOdo, tracejado: true, largura: 1.5}],
+      yMin: 0, refs: R.v85 ? [{y: R.v85, rot: `p85 em movimento ${fmt(R.v85, 0)} km/h`}] : [], eventos: true});
+  } else if (ABA === "estab") {
+    const bandas = [{de: 3, ate: 6, cor: "rgba(251,191,36,.07)"}, {de: -6, ate: -3, cor: "rgba(251,191,36,.07)"}, {de: 6, ate: 90, cor: "rgba(248,113,113,.08)"}, {de: -90, ate: -6, cor: "rgba(248,113,113,.08)"}];
+    dois({titulo: "Inclinação lateral", un: "graus · faixa = mín. a máx. no intervalo", unCurta: "°", casas: 1, bandas,
+      series: [{nome: "Lateral", cor: COR.s1, f: w => w.side, faixa: [w => w.sideMn, w => w.sideMx]}], refs: [{y: 0}]});
+    dois({titulo: "Rampa (inclinação frontal)", un: "% = tan(ângulo frontal)", unCurta: "%", casas: 1,
+      bandas: [{de: 6, ate: 1000, cor: "rgba(251,191,36,.07)"}, {de: -1000, ate: -6, cor: "rgba(251,191,36,.07)"}],
+      series: [{nome: "Rampa", cor: COR.vio, f: w => w.rampa, area: false}], refs: [{y: 0}]});
+    um({titulo: "Índice de estabilidade", un: "0–100 · heurístico: 100 − 7×|lateral°| − até 30 pela dinâmica acima da mediana", unCurta: "", casas: 0,
+      bandas: [{de: 0, ate: 55, cor: "rgba(248,113,113,.07)"}, {de: 55, ate: 75, cor: "rgba(251,191,36,.06)"}],
+      series: [{nome: "Índice", cor: "#34d399", f: w => w.estab, area: true}], yMin: 0, yMax: 100});
+  } else if (ABA === "carga") {
+    um({titulo: "Carga total", un: "soma das 4 células (unidade não declarada no dicionário)", unCurta: "", casas: 0,
+      series: [{nome: "Total", cor: COR.s4, f: w => w.carga, area: true}]});
+    um({titulo: "Células de carga", un: "leitura de cada célula", unCurta: "", casas: 0,
+      series: [1, 2, 3, 4].map((c, k) => ({nome: `Célula ${c}`, cor: [COR.s1, COR.s2, COR.s3, COR.s4][k], f: w => w.cel[k]}))});
+  } else if (ABA === "din") {
+    um({titulo: "Intensidade dinâmica horizontal", un: `G · maior |a_xy| entre os 4 acelerômetros, sem viés · ▲ = evento > ${fmt(R.limiar, 2)} G`, unCurta: "G", casas: 2,
+      series: [{nome: "RMS", cor: COR.s2, f: w => w.arms, area: true}, {nome: "Pico", cor: "#fbbf24", f: w => w.amax, tracejado: true, largura: 1.2}],
+      refs: [{y: R.limiar, rot: "limiar de evento"}], eventos: true, yMin: 0});
+  } else if (ABA === "amb") {
+    dois({titulo: "Temperatura e ponto de orvalho", un: "°C · faixa = mín. a máx.", unCurta: "°C", casas: 1,
+      series: [{nome: "Temperatura", cor: COR.rosa, f: w => w.temp, faixa: [w => w.tMn, w => w.tMx]}, {nome: "Ponto de orvalho", cor: COR.s1, f: w => w.orv, tracejado: true}]});
+    dois({titulo: "Umidade relativa", un: "% · faixa = mín. a máx.", unCurta: "%", casas: 0,
+      series: [{nome: "Umidade", cor: COR.s3, f: w => w.umid, faixa: [w => w.uMn, w => w.uMx], area: false}], yMin: 0, yMax: 100});
+  } else if (ABA === "acel") {
+    for (let c = 0; c < 4; c++) dois({titulo: `Acelerômetro ${c + 1}`, un: "G · média por janela", unCurta: "G", casas: 2,
+      series: ["x", "y", "z"].map((e, k) => ({nome: e.toUpperCase(), cor: [COR.s1, COR.s2, COR.s3][k], f: w => w.ac[c][k]}))});
+  } else if (ABA === "basc") {
+    um({titulo: "Fim de curso (báscula)", un: "1 = acionado no intervalo", unCurta: "", casas: 0, degrau: true,
+      series: [{nome: "Fim de curso 1", cor: COR.s1, f: w => w.basc[0]}, {nome: "Fim de curso 2", cor: COR.s2, f: w => w.basc[1]}]});
+  } else if (ABA === "mapa") {
+    const m = mapaSvg(J, R, {L: 1100, A: 520});
+    const box = document.createElement("div"); box.className = "graf";
+    box.innerHTML = `<h3>Trajeto GPS <small>· cor = velocidade · clique em um ponto para ver no cockpit</small></h3><div class="legenda"></div>`;
+    box.appendChild(m.el); G.push(box); m.marcar.graf = true; CUR.push(m.marcar);
+  }
+  for (let k = antes; k < CUR.length; k++) CUR[k].graf = true;
+  const alvo = $("graficos"); alvo.innerHTML = ""; alvo.classList.toggle("um", G.length === 1 || ABA === "vel" || ABA === "carga" || ABA === "basc");
+  if (ABA === "estab") alvo.classList.remove("um");
+  for (const g of G) alvo.appendChild(g);
+  if (ABA === "estab") alvo.lastChild.style.gridColumn = "1 / -1";
+  $("notaGraf").textContent = `janelas de ${R.W / 60} min do horímetro · horário UTC estimado`;
+  for (const f of CUR) if (f.graf) f(MOM);
+}
+$("abas").onclick = e => { const id = e.target.dataset.aba; if (id && id !== ABA) { ABA = id; desenharGraficos(); } };
+
+// ---------------------------------------------------------------- autonomia
+function montarAutonomia(J, R) {
+  const li = (tipo, ico, tit, txt) => `<li><span class="ico i-${tipo}">${ico}</span><div><b>${tit}</b><span class="d">${txt}</span></div></li>`;
+  const recs = [];
+  if (R.v85) recs.push(li("info", "»", `Velocidade de cruzeiro de referência: ${round5(R.v85)} km/h`,
+    `Percentil 85 da velocidade em movimento. Base para o limite padrão do modo assistido nesta rota.`));
+  if (R.inclN) {
+    const lim = round5(Math.min(R.inclV ?? R.v85, (R.v85 ?? 80) * 0.8));
+    recs.push(li("aviso", "⟲", `Trechos inclinados: limitar a ~${lim} km/h`,
+      `${R.inclN} janelas em movimento com inclinação lateral ≥ 3° (média ${fmt(R.inclV, 0)} km/h). Sugestão: reduzir a velocidade quando o inclinômetro passar de 3° e alertar acima de 6°.`));
+  }
+  if (R.rampaN) recs.push(li("aviso", "⟋", `Rampas fortes: antecipar redução de marcha`,
+    `${R.rampaN} janelas com rampa ≥ 6% (máx. ${fmt(R.rampaMax, 1)}%). Velocidade média nelas: ${fmt(R.rampaV, 0)} km/h.`));
+  if (R.eventos.length) {
+    const top = R.eventos.slice(0, 3).map(e => `${hhmm(e.t)} (${fmt(e.a, 2)} G${e.v !== null ? `, ${fmt(e.v, 0)} km/h` : ""})`).join(" · ");
+    recs.push(li("falha", "⚡", `${R.eventos.length} pontos de atenção georreferenciados`,
+      `Picos de aceleração horizontal acima de ${fmt(R.limiar, 2)} G. Maiores: ${top}. Use como mapa de riscos (buracos, lombadas, frenagens) para reduzir a velocidade ao se aproximar.`));
+  }
+  if (R.desA !== null) {
+    const forte = Math.abs(R.desA) > 5 || Math.abs(R.desB) > 5;
+    recs.push(li(forte ? "aviso" : "ok", "⚖", `Distribuição de carga ${forte ? "desequilibrada" : "equilibrada"}`,
+      `Células 1+2 vs 3+4: ${fmt(R.desA, 1)}% · 1+3 vs 2+4: ${fmt(R.desB, 1)}% · variação em movimento ${fmt(R.cvCarga, 1)}%. A posição de cada célula no implemento precisa ser confirmada com a Mestria.`));
+  }
+  if (R.paradas.length) recs.push(li("info", "■", `${R.paradas.length} paradas detectadas`,
+    `Tempo parado ${dur(R.tempoParado)}. Paradas longas e repetidas em pontos fixos indicam pontos de carga/descarga para o planejamento de rota.`));
+  if (R.margemOrv !== null && R.margemOrv < 2) recs.push(li("aviso", "≋", "Risco de condensação", `A temperatura chegou a ${fmt(R.margemOrv, 1)} °C do ponto de orvalho: considerar pista úmida e aumentar a distância de frenagem.`));
+  $("recs").innerHTML = recs.join("") || `<li><span class="ico i-info">i</span><div><b>Sem dados suficientes</b><span class="d">Colete um período com o veículo em movimento.</span></div></li>`;
+
+  const S = Object.fromEntries((R.sensores || []).map(s => [s.coluna, s]));
+  const sat = ["ac1_z", "ac2_z", "ac3_z", "ac4_z"].filter(c => S[c]?.situacao === "saturado no limite");
+  const pr = [
+    R.latencia > 5 ? li("falha", "✕", `Latência de ${dur(R.latencia)} até o lake`, "Inviável para controle em tempo real. A inferência e as regras de condução precisam rodar no equipamento embarcado; o lake serve para treino e auditoria.")
+      : li("ok", "✓", "Latência compatível", `Média ${dur(R.latencia)}.`),
+    R.usaHm ? li("aviso", "!", "Horário das amostras não confiável", `Até ${fmt(R.maxPorSeg, 0)} leituras chegam com o mesmo valor em time. A análise usa o horímetro (contador por amostra) para ordenar os dados; o ideal é um timestamp por amostra no firmware.`)
+      : li("ok", "✓", "Ordem das amostras", "Campo time usado diretamente."),
+    R.distOdo !== null ? li("aviso", "!", "Hodômetro: unidade provável é milímetros", `Lido como mm, o hodômetro marca ${fmt(R.distOdo, 0)} km no período, coerente com o GPS (${fmt(R.distGps, 0)} km). O dicionário de dados diz cm.`) : "",
+    sat.length ? li("falha", "✕", "Eixo Z dos acelerômetros saturado", `${sat.join(", ")} ficam no limite de 8 G. A escala ou a unidade precisa ser revista para medir impactos verticais.`) : "",
+    S.end_course_1?.situacao === "sem leitura (tudo zero)" ? li("aviso", "!", "Fim de curso sem variação", "Sensores da báscula ficaram em zero o período todo: confirmar instalação ou semântica (pendente desde o dicionário).") : "",
+    S.load_cell_1?.situacao === "fora da faixa" ? li("aviso", "!", "Células de carga fora da faixa declarada", "Leituras na casa dos milhares contra faixa de 0 a 999,9: falta a unidade e o fator de conversão para toneladas.") : "",
+    li(R.descartes > J.length * 0.05 ? "aviso" : "ok", R.descartes > J.length * 0.05 ? "!" : "✓", "Qualidade do GPS", `${R.descartes} de ${J.length} janelas descartadas por salto de posição (> 130 km/h implícitos).`),
+  ];
+  $("prontidao").innerHTML = pr.join("");
+}
+
+// ============================================================================
+// Arquivo local, histórico e login
+// ============================================================================
+function mostrarArquivo(res, nome) {
+  $("resultado").hidden = false;
+  $("banner").hidden = false; $("banner").className = "banner ok";
+  $("banner").innerHTML = `Arquivo aberto <small>${esc(nome)}</small>`;
+  $("cardEtapas").hidden = true; $("oficial").hidden = true;
+  renderizarDados(res.dados, [], `${res.dados.por_dia.length} dia(s) no arquivo`);
+  mostrarAnalises(res.analises, nome);
+  $("resultado").scrollIntoView({behavior: "smooth", block: "start"});
+}
+$("arquivo").onchange = async e => {
+  const arq = e.target.files[0]; if (!arq) return;
+  $("erro").hidden = true; $("abrirInfo").hidden = false; $("abrirInfo").textContent = `Lendo ${arq.name}…`;
+  try {
+    const res = await processar(arq.stream());
+    $("abrirInfo").innerHTML = `Aberto: <b>${esc(arq.name)}</b> · ${fmt(arq.size / 1048576, 1)} MB · ${fmt(res.dados.registros, 0)} registros (lido só no seu navegador).`;
+    mostrarArquivo(res, arq.name);
+  } catch (err) {
+    $("abrirInfo").textContent = "Abra um arquivo dados_iotcargo_*.txt ou o CSV exportado.";
+    mostrarErro("Não foi possível ler o arquivo: " + err.message);
+  }
+  e.target.value = "";
+};
+
+const lerHistorico = () => { try { return JSON.parse(localStorage.getItem("iotcargo_hist") || "[]"); } catch (e) { return []; } };
+function salvarHistorico(item) {
+  const h = [item, ...lerHistorico()].slice(0, 50);
+  try { localStorage.setItem("iotcargo_hist", JSON.stringify(h)); } catch (e) {}
+  mostrarHistorico(h);
+}
+function mostrarHistorico(h = lerHistorico()) {
+  $("tTestes").innerHTML = h.length ? h.map(t => `<tr>
+      <td class="dt">${esc(t.em)}</td><td class="dt">${esc(t.ini)}${t.fim !== t.ini ? " a " + esc(t.fim) : ""}</td>
+      <td>${esc(t.ns)}</td><td class="n">${fmt(t.registros, 0)}</td>
+      <td><span class="chip ${t.ok ? "c-ok" : "c-falha"}">${t.ok ? "COMUNICAÇÃO OK" : "COM PROBLEMAS"}</span></td>
+      <td class="n">${fmt(t.n_ok, 0)}</td><td class="n">${fmt(t.avisos, 0)}</td><td class="n">${fmt(t.falhas, 0)}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="vazio">Nenhum teste ainda</td></tr>`;
+}
+$("limparHist").onclick = () => { try { localStorage.removeItem("iotcargo_hist"); } catch (e) {} mostrarHistorico([]); };
+$("executar").onclick = executar;
+ocultarAnalises();
+
+const video = $("videoLogin");
+try { if (matchMedia("(prefers-reduced-motion: reduce)").matches) { video.removeAttribute("autoplay"); video.pause(); } } catch (e) {}
+function entrarNoApp() {
+  $("login").hidden = true; $("app").hidden = false; video.pause();
+  mostrarHistorico(); carregarParticoes();
+}
+function sair(msg = "") {
+  CRED = {u: "", s: ""}; play(false);
+  try { sessionStorage.removeItem("iotcargo_cred"); } catch (e) {}
+  $("app").hidden = true; $("login").hidden = false; $("msgLogin").textContent = msg; $("senha").value = "";
+  video.play().catch(() => {});
+}
+async function validar(u, s) {
+  const r = await fetch("/api/login", {headers: {"x-usuario": u, "x-senha": s}});
+  if (r.ok) return true;
+  if (r.status === 401) return false;
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  throw new Error(j.erro || "HTTP " + r.status);
+}
+$("formLogin").onsubmit = async e => {
+  e.preventDefault();
+  const u = $("usuario").value.trim(), s = $("senha").value;
+  $("entrar").disabled = true; $("entrar").textContent = "Entrando…"; $("msgLogin").textContent = "";
+  try {
+    if (await validar(u, s)) {
+      CRED = {u, s};
+      try { sessionStorage.setItem("iotcargo_cred", JSON.stringify(CRED)); } catch (e) {}
+      entrarNoApp();
+    } else $("msgLogin").textContent = "Usuário ou senha incorretos.";
+  } catch (err) { $("msgLogin").textContent = "Não foi possível entrar: " + err.message; }
+  finally { $("entrar").disabled = false; $("entrar").textContent = "Entrar"; }
+};
+$("sair").onclick = () => sair();
+(async () => {      // retoma a sessão desta aba do navegador, se houver
+  let c = null;
+  try { c = JSON.parse(sessionStorage.getItem("iotcargo_cred") || "null"); } catch (e) {}
+  if (c && c.u && c.s) {
+    try { if (await validar(c.u, c.s)) { CRED = c; entrarNoApp(); return; } } catch (e) {}
+  }
+  $("usuario").focus();
+})();
+</script>
+</body>
+</html>
